@@ -467,6 +467,23 @@ export type SidebarThreadStatus =
   | "failed"
   | "ready";
 
+export type SidebarThreadSection = "pinned" | "active" | "snoozed" | "settled";
+
+export function resolveSidebarThreadRowPresentation(section: SidebarThreadSection): {
+  tone: "live" | "parked";
+  lifecycleAction: "settle" | "unsettle" | "unsnooze";
+} {
+  switch (section) {
+    case "pinned":
+    case "active":
+      return { tone: "live", lifecycleAction: "settle" };
+    case "snoozed":
+      return { tone: "parked", lifecycleAction: "unsnooze" };
+    case "settled":
+      return { tone: "parked", lifecycleAction: "unsettle" };
+  }
+}
+
 type SidebarThreadStatusInput = Pick<
   SidebarThreadSummary,
   "hasPendingApprovals" | "hasPendingUserInput" | "session" | "backgroundLiveness"

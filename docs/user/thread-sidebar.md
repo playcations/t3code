@@ -10,6 +10,12 @@ confirmation applies to the sidebar controls, thread menus, and the `mod+shift+p
 Pinned threads still move to **Settled** when they become inactive. They also move when their pull
 request merges if **Auto-settle merged threads** is enabled.
 
+On web and desktop, every thread uses the same compact two-line row. The title, project, status,
+pin, and compact activity indicators stay visible; hover the row or move keyboard focus through
+its controls for settle, snooze, and reverse actions. Hover the row for its full project, branch,
+environment, provider, model, and terminal details. Moving a thread between lifecycle sections
+changes its tone and available action without changing its row height.
+
 Each environment owns its automatic settlement settings. The server checks them even when no web,
 desktop, or mobile client is connected. By default, it settles threads after three days without
 activity and when their pull request merges. An eligible idle thread also settles when its pull

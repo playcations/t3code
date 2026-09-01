@@ -20,6 +20,7 @@ import {
   isTrailingDoubleClick,
   orderItemsByPreferredIds,
   resolveProjectStatusIndicator,
+  resolveSidebarThreadRowPresentation,
   resolveThreadRowClassName,
   resolveSidebarThreadStatus,
   resolveThreadStatusPill,
@@ -653,6 +654,27 @@ describe("isContextMenuPointerDown", () => {
         isMac: false,
       }),
     ).toBe(false);
+  });
+});
+
+describe("resolveSidebarThreadRowPresentation", () => {
+  it("maps each lifecycle section to the shared row's tone and reverse action", () => {
+    expect(resolveSidebarThreadRowPresentation("pinned")).toEqual({
+      tone: "live",
+      lifecycleAction: "settle",
+    });
+    expect(resolveSidebarThreadRowPresentation("active")).toEqual({
+      tone: "live",
+      lifecycleAction: "settle",
+    });
+    expect(resolveSidebarThreadRowPresentation("snoozed")).toEqual({
+      tone: "parked",
+      lifecycleAction: "unsnooze",
+    });
+    expect(resolveSidebarThreadRowPresentation("settled")).toEqual({
+      tone: "parked",
+      lifecycleAction: "unsettle",
+    });
   });
 });
 
