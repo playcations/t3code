@@ -19,6 +19,8 @@ export function buildProjectThreadList(input: {
     scope,
     inbox: [] as Array<ThreadListV2ThreadListItem | ThreadListV2PendingListItem>,
     needsAttention: false,
+    workingCount: 0,
+    doneCount: 0,
   }));
   const folderByProject = new Map(
     folders.flatMap((folder) =>
@@ -28,8 +30,34 @@ export function buildProjectThreadList(input: {
     ),
   );
   const pinned: ThreadListV2ListItem[] = [];
+  const unfiled: ThreadListV2ListItem[] = [];
+  // The Working section stays one section above the folders, since its threads are busy.
+  const working: ThreadListV2ListItem[] = [];
+  // Inbox sections stay above the folders: they collect what wants the user across projects.
+  const inbox: ThreadListV2ListItem[] = [];
   const shelves: ThreadListV2ListItem[] = [];
+  let inWorkingShelf = false;
   for (const item of input.items) {
+    if (item.type === "v2-pinned-shelf") {
+      pinned.unshift(item);
+      continue;
+    }
+    if (item.type === "v2-working-shelf") {
+      inWorkingShelf = true;
+      working.push({ ...item, showStatusCount: true });
+      continue;
+    }
+    if (item.type === "v2-snoozed-shelf" || item.type === "v2-settled-shelf") {
+      inWorkingShelf = false;
+    }
+    if (inWorkingShelf && item.type === "v2-thread") {
+      working.push(item);
+      continue;
+    }
+    if (item.type === "v2-inbox-shelf" || (item.type === "v2-thread" && item.item.inbox)) {
+      inbox.push(item.type === "v2-inbox-shelf" ? { ...item, showStatusCount: true } : item);
+      continue;
+    }
     if (
       item.type === "v2-snoozed-shelf" ||
       item.type === "v2-settled-shelf" ||
@@ -47,7 +75,7 @@ export function buildProjectThreadList(input: {
     const folder = folderByProject.get(scopedProjectKey(entity.environmentId, entity.projectId));
     // A shell can arrive before its project; keep the thread reachable during that gap.
     if (!folder) {
-      pinned.push(item);
+      unfiled.push(item);
       continue;
     }
     folder.inbox.push(item);
@@ -56,13 +84,16 @@ export function buildProjectThreadList(input: {
       folder.needsAttention ||=
         status === "approval" ||
         status === "input" ||
+        status === "request" ||
         status === "failed" ||
-        status === "limited" ||
-        threadHasUnseenCompletion(item.item.thread);
+        status === "limited";
+      // The counts match the row labels: Working and Waiting share a dashed circle, Done a check.
+      if (status === "working" || status === "waiting") folder.workingCount += 1;
+      if (status === "ready" && threadHasUnseenCompletion(item.item.thread)) folder.doneCount += 1;
     }
   }
   const collapsed = new Set(input.collapsedProjectGroups);
-  const result: ThreadListV2ListItem[] = [...pinned];
+  const result: ThreadListV2ListItem[] = [...pinned, ...inbox, ...working, ...unfiled];
   for (const folder of folders) {
     const count = folder.inbox.length;
     if (count === 0) continue;
@@ -76,6 +107,8 @@ export function buildProjectThreadList(input: {
       project: folder.scope.representative,
       count,
       needsAttention: folder.needsAttention,
+      workingCount: folder.workingCount,
+      doneCount: folder.doneCount,
       expanded,
       disabled: input.disabled,
     });

@@ -73,6 +73,46 @@ export type ThreadListV2Status =
   | "failed"
   | "limited"
   | "ready";
+/** Top sections that hold threads asking for the user until they are handled or read. */
+export const THREAD_LIST_V2_INBOX_KINDS = ["needsYou", "failed", "completed"] as const;
+export type ThreadListV2InboxKind = (typeof THREAD_LIST_V2_INBOX_KINDS)[number];
+export type ThreadListV2InboxFlags = Readonly<Record<ThreadListV2InboxKind, boolean>>;
+
+/**
+ * The open thread keeps the inbox section it had when it was selected: opening it marks it
+ * read, and it should leave the section when the user moves on, not while they read it.
+ */
+export function createThreadListInboxHold() {
+  let held: { readonly key: string; readonly kind: ThreadListV2InboxKind | null } | null = null;
+  return (
+    selectedThreadKey: string | null,
+    currentKind: ThreadListV2InboxKind | null,
+  ): { readonly key: string; readonly kind: ThreadListV2InboxKind } | null => {
+    if (selectedThreadKey === null) {
+      held = null;
+      return null;
+    }
+    if (held?.key !== selectedThreadKey) held = { key: selectedThreadKey, kind: currentKind };
+    else if (held.kind === null && currentKind !== null) held = { ...held, kind: currentKind };
+    return held.kind === null ? null : { key: held.key, kind: held.kind };
+  };
+}
+
+/** The inbox section a thread belongs in by its own state, before any hold. */
+export function resolveThreadListV2InboxKind(
+  thread: EnvironmentThreadShell,
+  enabled: ThreadListV2InboxFlags,
+): ThreadListV2InboxKind | null {
+  const status = resolveThreadListV2Status(thread);
+  if (enabled.needsYou && (status === "approval" || status === "input" || status === "request")) {
+    return "needsYou";
+  }
+  if (!threadHasUnseenCompletion(thread)) return null;
+  if (enabled.failed && (status === "failed" || status === "limited")) return "failed";
+  if (enabled.completed && status === "ready") return "completed";
+  return null;
+}
+
 export type ThreadListV2SwipeAction = "archive" | "settle" | "unsettle" | "snooze" | "unsnooze";
 
 /**
@@ -303,6 +343,8 @@ export interface ThreadListV2Item {
   readonly pinned: boolean;
   readonly wokeAt: string | null;
   readonly isLast: boolean;
+  /** Listed in this inbox section rather than among the active threads. */
+  readonly inbox?: ThreadListV2InboxKind;
 }
 
 export interface ThreadListV2Layout {
@@ -310,6 +352,16 @@ export interface ThreadListV2Layout {
   readonly hiddenSettledCount: number;
   /** The settled rows the shelf may list, before its visible limit. */
   readonly listedSettledThreads: ReadonlyArray<EnvironmentThreadShell>;
+  readonly pinnedCount: number;
+  /** Inbox sections with threads, in list order; `start` and `end` bound their visible rows. */
+  readonly inboxShelves: ReadonlyArray<{
+    readonly kind: ThreadListV2InboxKind;
+    readonly count: number;
+    readonly start: number;
+    readonly end: number;
+  }>;
+  /** Where the active threads start, after pinned threads and inbox sections. */
+  readonly activeStartIndex: number;
   readonly workingCount: number;
   readonly workingShelfHeaderIndex: number | null;
   readonly snoozedCount: number;
@@ -347,12 +399,38 @@ export interface ThreadListV2PendingListItem {
   readonly inProjectFolder?: true;
 }
 
+export interface ThreadListV2PinnedShelfListItem {
+  readonly type: "v2-pinned-shelf";
+  readonly key: "v2-pinned-shelf";
+  readonly count: number;
+  readonly expanded: boolean;
+  readonly disabled: boolean;
+}
+
+export interface ThreadListV2InboxShelfListItem {
+  readonly type: "v2-inbox-shelf";
+  readonly key: string;
+  readonly kind: ThreadListV2InboxKind;
+  readonly count: number;
+  readonly expanded: boolean;
+  readonly disabled: boolean;
+  /** Set in the project folder layout, where collapsed sections count by status like folders. */
+  readonly showStatusCount?: true;
+}
+
+/** Labels the active threads under Pinned and inbox sections, so they do not read as part of them. */
+export interface ThreadListV2ActiveDividerListItem {
+  readonly type: "v2-active-divider";
+  readonly key: "v2-active-divider";
+}
+
 export interface ThreadListV2WorkingShelfListItem {
   readonly type: "v2-working-shelf";
   readonly key: "v2-working-shelf";
   readonly count: number;
   readonly expanded: boolean;
   readonly disabled: boolean;
+  readonly showStatusCount?: true;
 }
 
 export interface ThreadListV2SnoozedShelfListItem {
@@ -380,6 +458,8 @@ export interface ThreadListV2ProjectHeaderItem {
   readonly project: EnvironmentProject;
   readonly count: number;
   readonly needsAttention: boolean;
+  readonly workingCount: number;
+  readonly doneCount: number;
   readonly expanded: boolean;
   readonly disabled: boolean;
 }
@@ -388,6 +468,9 @@ export type ThreadListV2ListItem =
   | ThreadListV2ProjectHeaderItem
   | ThreadListV2ThreadListItem
   | ThreadListV2PendingListItem
+  | ThreadListV2PinnedShelfListItem
+  | ThreadListV2ActiveDividerListItem
+  | ThreadListV2InboxShelfListItem
   | ThreadListV2WorkingShelfListItem
   | ThreadListV2SnoozedShelfListItem
   | ThreadListV2SettledShelfListItem;
@@ -399,6 +482,9 @@ export function isThreadListV2ListItem(value: {
     value.type === "v2-project-header" ||
     value.type === "v2-thread" ||
     value.type === "v2-pending" ||
+    value.type === "v2-pinned-shelf" ||
+    value.type === "v2-active-divider" ||
+    value.type === "v2-inbox-shelf" ||
     value.type === "v2-working-shelf" ||
     value.type === "v2-snoozed-shelf" ||
     value.type === "v2-settled-shelf"
@@ -419,6 +505,8 @@ export function threadListV2ListItemsAreEqual(
         previous.project === item.project &&
         previous.count === item.count &&
         previous.needsAttention === item.needsAttention &&
+        previous.workingCount === item.workingCount &&
+        previous.doneCount === item.doneCount &&
         previous.expanded === item.expanded &&
         previous.disabled === item.disabled
       );
@@ -431,6 +519,7 @@ export function threadListV2ListItemsAreEqual(
         previous.item.snoozed === item.item.snoozed &&
         previous.item.pinned === item.item.pinned &&
         previous.item.wokeAt === item.item.wokeAt &&
+        previous.item.inbox === item.item.inbox &&
         previous.snoozeWakeLabelText === item.snoozeWakeLabelText &&
         previous.timeLabel === item.timeLabel &&
         previous.snoozePresetMinute === item.snoozePresetMinute &&
@@ -449,12 +538,31 @@ export function threadListV2ListItemsAreEqual(
         previous.showTrailingDivider === item.showTrailingDivider &&
         previous.inProjectFolder === item.inProjectFolder
       );
+    case "v2-pinned-shelf":
+      return (
+        previous.type === "v2-pinned-shelf" &&
+        previous.count === item.count &&
+        previous.expanded === item.expanded &&
+        previous.disabled === item.disabled
+      );
+    case "v2-inbox-shelf":
+      return (
+        previous.type === "v2-inbox-shelf" &&
+        previous.kind === item.kind &&
+        previous.count === item.count &&
+        previous.expanded === item.expanded &&
+        previous.disabled === item.disabled &&
+        previous.showStatusCount === item.showStatusCount
+      );
+    case "v2-active-divider":
+      return previous.type === "v2-active-divider";
     case "v2-working-shelf":
       return (
         previous.type === "v2-working-shelf" &&
         previous.count === item.count &&
         previous.expanded === item.expanded &&
-        previous.disabled === item.disabled
+        previous.disabled === item.disabled &&
+        previous.showStatusCount === item.showStatusCount
       );
     case "v2-snoozed-shelf":
       return (
@@ -496,6 +604,11 @@ function resolveThreadListV2ItemTimeLabel(
 export function buildThreadListV2ListItems(input: {
   readonly items: ReadonlyArray<ThreadListV2Item>;
   readonly pendingTasks: ReadonlyArray<PendingNewTask>;
+  readonly pinnedCount?: number;
+  readonly pinnedShelfExpanded?: boolean;
+  readonly inboxShelves?: ThreadListV2Layout["inboxShelves"];
+  readonly inboxShelfExpanded?: Partial<ThreadListV2InboxFlags>;
+  readonly activeStartIndex?: number;
   readonly workingCount?: number;
   readonly workingShelfExpanded?: boolean;
   readonly workingShelfHeaderIndex?: number | null;
@@ -559,8 +672,37 @@ export function buildThreadListV2ListItems(input: {
   const snoozedEnd = settledShelfHeaderIndex ?? threadItems.length;
   const workingEnd = snoozedShelfHeaderIndex ?? snoozedEnd;
   const activeEnd = workingShelfHeaderIndex ?? workingEnd;
-  const result: ThreadListV2ListItem[] = [...pendingItems, ...threadItems.slice(0, activeEnd)];
   const shelfDisabled = input.shelfPreferencesLoading === true;
+  const pinnedCount = input.pinnedCount ?? 0;
+  const inboxShelves = input.inboxShelves ?? [];
+  const activeStart = Math.min(input.activeStartIndex ?? 0, activeEnd);
+  const pinnedEnd = inboxShelves[0]?.start ?? activeStart;
+  const result: ThreadListV2ListItem[] = [...pendingItems];
+  if (pinnedCount > 0) {
+    result.push({
+      type: "v2-pinned-shelf",
+      key: "v2-pinned-shelf",
+      count: pinnedCount,
+      expanded: input.pinnedShelfExpanded !== false,
+      disabled: shelfDisabled,
+    });
+  }
+  result.push(...threadItems.slice(0, pinnedEnd));
+  for (const shelf of inboxShelves) {
+    result.push({
+      type: "v2-inbox-shelf",
+      key: `v2-inbox-shelf:${shelf.kind}`,
+      kind: shelf.kind,
+      count: shelf.count,
+      expanded: input.inboxShelfExpanded?.[shelf.kind] !== false,
+      disabled: shelfDisabled,
+    });
+    result.push(...threadItems.slice(shelf.start, shelf.end));
+  }
+  if ((pinnedCount > 0 || inboxShelves.length > 0) && activeStart < activeEnd) {
+    result.push({ type: "v2-active-divider", key: "v2-active-divider" });
+  }
+  result.push(...threadItems.slice(activeStart, activeEnd));
   if (workingShelfHeaderIndex !== null && workingCount > 0) {
     result.push({
       type: "v2-working-shelf",
@@ -638,6 +780,11 @@ export function buildThreadListV2Items(input: {
   readonly snoozeEnvironmentIds?: ReadonlySet<EnvironmentId>;
   readonly settledLimit?: number;
   readonly now: string;
+  readonly pinnedShelfExpanded?: boolean;
+  readonly inboxShelvesEnabled?: ThreadListV2InboxFlags;
+  readonly inboxShelfExpanded?: Partial<ThreadListV2InboxFlags>;
+  /** The open thread's held inbox section, from `createThreadListInboxHold`. */
+  readonly heldInbox?: { readonly key: string; readonly kind: ThreadListV2InboxKind } | null;
   readonly workingShelfEnabled?: boolean;
   readonly workingShelfExpanded?: boolean;
   readonly isWorking?: (thread: EnvironmentThreadShell) => boolean;
@@ -673,6 +820,12 @@ export function buildThreadListV2Items(input: {
   const pinned: EnvironmentThreadShell[] = [];
   const active: EnvironmentThreadShell[] = [];
   const working: EnvironmentThreadShell[] = [];
+  const inbox: Record<ThreadListV2InboxKind, EnvironmentThreadShell[]> = {
+    needsYou: [],
+    failed: [],
+    completed: [],
+  };
+  const inboxEnabled = input.inboxShelvesEnabled;
   const settled: EnvironmentThreadShell[] = [];
   const snoozed: EnvironmentThreadShell[] = [];
   let nextSnoozeWakeAt: string | null = null;
@@ -727,10 +880,23 @@ export function buildThreadListV2Items(input: {
       settled.push(thread);
     } else if (thread.pinnedAt != null) {
       pinned.push(thread);
-    } else if (workingShelfEnabled && (input.isWorking ?? isThreadWorking)(thread)) {
-      working.push(thread);
     } else {
-      active.push(thread);
+      const ownKind =
+        inboxEnabled === undefined ? null : resolveThreadListV2InboxKind(thread, inboxEnabled);
+      // Needs-you comes first: a request can arrive while a thread still reads as working.
+      if (ownKind === "needsYou") {
+        inbox.needsYou.push(thread);
+      } else if (workingShelfEnabled && (input.isWorking ?? isThreadWorking)(thread)) {
+        working.push(thread);
+      } else {
+        const held =
+          input.heldInbox?.key === `${thread.environmentId}:${thread.id}`
+            ? input.heldInbox.kind
+            : null;
+        const kind = ownKind ?? held;
+        if (kind !== null) inbox[kind].push(thread);
+        else active.push(thread);
+      }
     }
   }
 
@@ -763,6 +929,9 @@ export function buildThreadListV2Items(input: {
       })),
       hiddenSettledCount: 0,
       listedSettledThreads: [],
+      pinnedCount: 0,
+      inboxShelves: [],
+      activeStartIndex: 0,
       workingCount: 0,
       workingShelfHeaderIndex: null,
       snoozedCount: 0,
@@ -820,12 +989,19 @@ export function buildThreadListV2Items(input: {
           (thread) => `${thread.environmentId}:${thread.id}` === selectedThreadKey,
         );
 
-  const items: ThreadListV2Item[] = [];
-  for (const thread of applyPendingThreadOrder(
+  const orderedPinned = applyPendingThreadOrder(
     sortPinnedThreadsByOrderKey(pinned),
     "pinned",
     pending,
-  )) {
+  );
+  const visiblePinned =
+    input.pinnedShelfExpanded !== false
+      ? orderedPinned
+      : orderedPinned.filter(
+          (thread) => `${thread.environmentId}:${thread.id}` === selectedThreadKey,
+        );
+  const items: ThreadListV2Item[] = [];
+  for (const thread of visiblePinned) {
     items.push({
       thread,
       variant: "card",
@@ -835,6 +1011,29 @@ export function buildThreadListV2Items(input: {
       isLast: false,
     });
   }
+  const inboxShelves: Array<ThreadListV2Layout["inboxShelves"][number]> = [];
+  for (const kind of THREAD_LIST_V2_INBOX_KINDS) {
+    const ordered = sortInboxThreadsByReturn(inbox[kind], input.inboxReturnAt);
+    if (ordered.length === 0) continue;
+    const start = items.length;
+    const visible =
+      input.inboxShelfExpanded?.[kind] !== false
+        ? ordered
+        : ordered.filter((thread) => `${thread.environmentId}:${thread.id}` === selectedThreadKey);
+    for (const thread of visible) {
+      items.push({
+        thread,
+        variant: "card",
+        snoozed: false,
+        pinned: false,
+        wokeAt: resolveThreadListV2WokeAt(thread, { now }),
+        isLast: false,
+        inbox: kind,
+      });
+    }
+    inboxShelves.push({ kind, count: ordered.length, start, end: items.length });
+  }
+  const activeStartIndex = items.length;
   for (const thread of orderedActive) {
     items.push({
       thread,
@@ -886,6 +1085,9 @@ export function buildThreadListV2Items(input: {
     items,
     hiddenSettledCount: Math.max(0, settledTotal - pagedSettled.length),
     listedSettledThreads: listedSettled,
+    pinnedCount: orderedPinned.length,
+    inboxShelves,
+    activeStartIndex,
     workingCount: orderedWorking.length,
     workingShelfHeaderIndex,
     snoozedCount: orderedSnoozed.length,

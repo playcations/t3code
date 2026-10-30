@@ -63,6 +63,9 @@ import {
   ThreadListV2SettledShelfHeader,
   ThreadListV2ShowMoreRow,
   ThreadListV2SnoozedShelfHeader,
+  ThreadListV2ActiveDivider,
+  ThreadListV2PinnedShelfHeader,
+  ThreadListV2InboxShelfHeader,
   ThreadListV2WorkingShelfHeader,
 } from "../threads/thread-list-v2-items";
 import { useThreadRowProviderInstanceResolver } from "../threads/thread-provider-instance";
@@ -428,6 +431,11 @@ export function HomeScreen(props: HomeScreenProps) {
     toggleSettledShelf,
     toggleSnoozedShelf,
     toggleWorkingShelf,
+    pinnedShelfExpanded,
+    togglePinnedShelf,
+    inboxShelvesEnabled,
+    inboxShelfExpanded,
+    toggleInboxShelf,
   } = useThreadListV2ShelfPreferences();
   const now = useThreadListNow(props.threads);
   const listEnvironments = useAtomValue(threadListEnvironmentsAtom);
@@ -467,6 +475,9 @@ export function HomeScreen(props: HomeScreenProps) {
     pendingOrder,
     shelfPreferencesLoaded,
     workingShelfEnabled,
+    pinnedShelfExpanded,
+    inboxShelvesEnabled,
+    inboxShelfExpanded,
     workingShelfExpanded,
     snoozedShelfExpanded,
     settledShelfExpanded,
@@ -548,12 +559,36 @@ export function HomeScreen(props: HomeScreenProps) {
         />
       );
     }
+    if (item.type === "v2-pinned-shelf") {
+      return (
+        <ThreadListV2PinnedShelfHeader
+          count={item.count}
+          disabled={item.disabled}
+          expanded={item.expanded}
+          onToggle={togglePinnedShelf}
+        />
+      );
+    }
+    if (item.type === "v2-active-divider") return <ThreadListV2ActiveDivider />;
+    if (item.type === "v2-inbox-shelf") {
+      return (
+        <ThreadListV2InboxShelfHeader
+          kind={item.kind}
+          count={item.count}
+          disabled={item.disabled}
+          expanded={item.expanded}
+          showStatusCount={item.showStatusCount === true}
+          onToggle={() => toggleInboxShelf(item.kind)}
+        />
+      );
+    }
     if (item.type === "v2-working-shelf") {
       return (
         <ThreadListV2WorkingShelfHeader
           count={item.count}
           disabled={item.disabled}
           expanded={item.expanded}
+          showStatusCount={item.showStatusCount === true}
           onToggle={toggleWorkingShelf}
         />
       );
@@ -635,7 +670,8 @@ export function HomeScreen(props: HomeScreenProps) {
         reorderSupported={
           item.item.pinned
             ? pinReorderEnvironmentIds.has(thread.environmentId)
-            : !workingShelfEnabled &&
+            : item.item.inbox === undefined &&
+              !workingShelfEnabled &&
               !projectFoldersEnabled &&
               activeReorderEnvironmentIds.has(thread.environmentId)
         }

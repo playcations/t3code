@@ -126,6 +126,13 @@ export interface Preferences {
   readonly threadListSettledShelfExpanded?: boolean;
   readonly threadListSnoozedShelfExpanded?: boolean;
   readonly threadListWorkingShelfExpanded?: boolean;
+  readonly threadListPinnedShelfExpanded?: boolean;
+  readonly needsYouShelfEnabled?: boolean;
+  readonly failedShelfEnabled?: boolean;
+  readonly completedShelfEnabled?: boolean;
+  readonly threadListNeedsYouShelfExpanded?: boolean;
+  readonly threadListFailedShelfExpanded?: boolean;
+  readonly threadListCompletedShelfExpanded?: boolean;
   readonly threadListFilters?: ThreadListFilters;
   readonly pullRequestListFilters?: PullRequestListPreferences;
   readonly workspaceSelections?: WorkspaceSelections;
@@ -204,6 +211,13 @@ function sanitizePreferences(parsed: Preferences): Preferences {
     threadListSettledShelfExpanded?: boolean;
     threadListSnoozedShelfExpanded?: boolean;
     threadListWorkingShelfExpanded?: boolean;
+    threadListPinnedShelfExpanded?: boolean;
+    needsYouShelfEnabled?: boolean;
+    failedShelfEnabled?: boolean;
+    completedShelfEnabled?: boolean;
+    threadListNeedsYouShelfExpanded?: boolean;
+    threadListFailedShelfExpanded?: boolean;
+    threadListCompletedShelfExpanded?: boolean;
     threadListFilters?: ThreadListFilters;
     pullRequestListFilters?: PullRequestListPreferences;
     workspaceSelections?: WorkspaceSelections;
@@ -354,6 +368,27 @@ function sanitizePreferences(parsed: Preferences): Preferences {
   }
   if (typeof parsed.threadListWorkingShelfExpanded === "boolean") {
     preferences.threadListWorkingShelfExpanded = parsed.threadListWorkingShelfExpanded;
+  }
+  if (typeof parsed.threadListPinnedShelfExpanded === "boolean") {
+    preferences.threadListPinnedShelfExpanded = parsed.threadListPinnedShelfExpanded;
+  }
+  if (typeof parsed.needsYouShelfEnabled === "boolean") {
+    preferences.needsYouShelfEnabled = parsed.needsYouShelfEnabled;
+  }
+  if (typeof parsed.failedShelfEnabled === "boolean") {
+    preferences.failedShelfEnabled = parsed.failedShelfEnabled;
+  }
+  if (typeof parsed.completedShelfEnabled === "boolean") {
+    preferences.completedShelfEnabled = parsed.completedShelfEnabled;
+  }
+  if (typeof parsed.threadListNeedsYouShelfExpanded === "boolean") {
+    preferences.threadListNeedsYouShelfExpanded = parsed.threadListNeedsYouShelfExpanded;
+  }
+  if (typeof parsed.threadListFailedShelfExpanded === "boolean") {
+    preferences.threadListFailedShelfExpanded = parsed.threadListFailedShelfExpanded;
+  }
+  if (typeof parsed.threadListCompletedShelfExpanded === "boolean") {
+    preferences.threadListCompletedShelfExpanded = parsed.threadListCompletedShelfExpanded;
   }
   if (isThreadListFilters(parsed.threadListFilters)) {
     preferences.threadListFilters = parsed.threadListFilters;

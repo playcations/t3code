@@ -2,7 +2,7 @@ import type {
   EnvironmentProject,
   EnvironmentThreadShell,
 } from "@t3tools/client-runtime/state/shell";
-import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, RunId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { PendingDraftTask } from "../../state/pending-new-tasks-model";
@@ -92,6 +92,7 @@ describe("project thread folders", () => {
     expect(
       result.map((item) => (item.type === "v2-thread" ? item.item.thread.id : item.type)),
     ).toEqual([
+      "v2-pinned-shelf",
       "b-pinned",
       "v2-project-header",
       "a-active",
@@ -283,6 +284,123 @@ describe("project thread folders", () => {
         .filter((item) => item.type === "v2-pending")
         .map((item) => item.pendingTask.projectId),
     ).toEqual([b.id]);
+  });
+
+  it("keeps the Working section above the folders and its threads out of them", () => {
+    const { a, b, input } = setup();
+    const running = {
+      status: "running" as const,
+      activeRunId: null,
+      providerInstanceId: ProviderInstanceId.make("codex"),
+      providerName: "Codex",
+      lastError: null,
+      updatedAt: now,
+    };
+    const layout = buildThreadListV2Items({
+      threads: [
+        thread("a-idle", a),
+        thread("a-busy", a, { runtime: running }),
+        thread("b-busy", b, { runtime: running }),
+      ],
+      environmentId: null,
+      searchQuery: "",
+      now,
+      workingShelfEnabled: true,
+      workingShelfExpanded: true,
+    });
+    const items = buildThreadListV2ListItems({
+      ...layout,
+      pendingTasks: [],
+      workingShelfExpanded: true,
+    });
+    const result = buildProjectThreadList({ ...input, items });
+    expect(
+      result.map((item) =>
+        item.type === "v2-thread"
+          ? item.item.thread.id
+          : item.type === "v2-project-header"
+            ? `folder:${item.title}(${item.count})`
+            : item.type,
+      ),
+    ).toEqual(["v2-working-shelf", "a-busy", "b-busy", "folder:A(1)", "a-idle"]);
+  });
+
+  it("keeps inbox sections above the folders and their threads out of them", () => {
+    const { a, b, input } = setup();
+    const layout = buildThreadListV2Items({
+      threads: [
+        thread("a-idle", a),
+        thread("b-asks", b, { hasPendingApprovals: true }),
+        thread("a-asks", a, { hasPendingApprovals: true }),
+      ],
+      environmentId: null,
+      searchQuery: "",
+      now,
+      inboxShelvesEnabled: { needsYou: true, failed: true, completed: true },
+    });
+    const items = buildThreadListV2ListItems({ ...layout, pendingTasks: [] });
+    const result = buildProjectThreadList({ ...input, items });
+    expect(
+      result.map((item) =>
+        item.type === "v2-thread"
+          ? item.item.thread.id
+          : item.type === "v2-project-header"
+            ? `folder:${item.title}(${item.count})`
+            : item.type,
+      ),
+    ).toEqual(["v2-inbox-shelf", "a-asks", "b-asks", "folder:A(1)", "a-idle"]);
+  });
+
+  it("counts each folder's working and unread done threads for its header", () => {
+    const { a, b, input } = setup();
+    const running = {
+      status: "running" as const,
+      activeRunId: null,
+      providerInstanceId: ProviderInstanceId.make("codex"),
+      providerName: "Codex",
+      lastError: null,
+      updatedAt: now,
+    };
+    const finished = (id: string, lastVisitedAt: string) =>
+      thread(id, a, {
+        lastVisitedAt,
+        latestRun: {
+          runId: RunId.make(`run-${id}`),
+          status: "completed",
+          requestedAt: "2026-10-21T10:00:00.000Z",
+          startedAt: "2026-10-21T10:00:00.000Z",
+          completedAt: "2026-10-21T11:00:00.000Z",
+          assistantMessageId: null,
+        },
+      });
+    const layout = buildThreadListV2Items({
+      threads: [
+        thread("a-busy", a, { runtime: running }),
+        thread("a-busy-2", a, { runtime: running }),
+        finished("a-done", "2026-10-21T10:30:00.000Z"),
+        finished("a-read", "2026-10-21T11:30:00.000Z"),
+        thread("b-idle", b),
+      ],
+      environmentId: null,
+      searchQuery: "",
+      now,
+    });
+    const items = buildThreadListV2ListItems({ ...layout, pendingTasks: [] });
+    const headers = buildProjectThreadList({ ...input, items }).filter(
+      (item) => item.type === "v2-project-header",
+    );
+    expect(
+      headers.map(({ title, count, workingCount, doneCount, needsAttention }) => ({
+        title,
+        count,
+        workingCount,
+        doneCount,
+        needsAttention,
+      })),
+    ).toEqual([
+      { title: "A", count: 4, workingCount: 2, doneCount: 1, needsAttention: false },
+      { title: "B", count: 1, workingCount: 0, doneCount: 0, needsAttention: false },
+    ]);
   });
 
   it("updates recycled headers when collapse or attention state changes", () => {

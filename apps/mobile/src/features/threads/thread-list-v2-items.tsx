@@ -30,7 +30,7 @@ import type { SnoozePresetSetting } from "@t3tools/contracts/settings";
 import { canSnooze } from "@t3tools/client-runtime/state/thread-settled";
 import { threadChipCopyTarget } from "@t3tools/client-runtime/thread-reference";
 import type { MenuAction } from "@react-native-menu/menu";
-import { memo, useCallback, useMemo, useState, type ComponentProps } from "react";
+import { memo, useCallback, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import type { SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 
@@ -73,6 +73,7 @@ import {
   resolveThreadListV2Status,
   resolveThreadListV2ProviderDrivers,
   resolveThreadListV2SwipeActions,
+  type ThreadListV2InboxKind,
   type ThreadListV2Status,
 } from "./threadListV2";
 import { QueuedMessageIcon } from "./queued-message-icon";
@@ -88,6 +89,12 @@ interface StatusLabel {
   readonly className: string;
   readonly iconTintClassName: string;
 }
+const WORKING_STATUS_LABEL: StatusLabel = {
+  label: "Working",
+  icon: "circle.dashed",
+  className: "text-adaptive-sky-600-400",
+  iconTintClassName: "accent-adaptive-sky-600-400",
+};
 const STATUS_LABEL_BY_STATUS: Partial<Record<ThreadListV2Status, StatusLabel>> = {
   approval: {
     label: "Approval",
@@ -107,12 +114,7 @@ const STATUS_LABEL_BY_STATUS: Partial<Record<ThreadListV2Status, StatusLabel>> =
     className: "text-adaptive-fuchsia-600-300",
     iconTintClassName: "accent-adaptive-fuchsia-600-300",
   },
-  working: {
-    label: "Working",
-    icon: "circle.dashed",
-    className: "text-adaptive-sky-600-400",
-    iconTintClassName: "accent-adaptive-sky-600-400",
-  },
+  working: WORKING_STATUS_LABEL,
   waiting: {
     label: "Waiting",
     icon: "circle.dashed.inset.filled",
@@ -138,6 +140,29 @@ const DONE_STATUS_LABEL: StatusLabel = {
   className: "text-adaptive-emerald-700-300",
   iconTintClassName: "accent-adaptive-emerald-700-300",
 };
+
+/** A status icon in its row color with a count, for headers that hide their rows. */
+export function ThreadStatusCount(props: {
+  readonly status: "working" | "done";
+  readonly count: number;
+}) {
+  const label = props.status === "done" ? DONE_STATUS_LABEL : WORKING_STATUS_LABEL;
+  if (props.count === 0) return null;
+  return (
+    <View className="flex-row items-center gap-0.5">
+      <SymbolView
+        name={label.icon}
+        size={12}
+        tintColorClassName={label.iconTintClassName}
+        type="monochrome"
+        weight="semibold"
+      />
+      <Text className={cn("text-xs font-t3-medium tabular-nums", label.className)}>
+        {props.count}
+      </Text>
+    </View>
+  );
+}
 
 function ThreadListV2Duration(props: { readonly startedAt: string | null }) {
   const startedAtMs = Date.parse(props.startedAt ?? "");
@@ -170,6 +195,7 @@ function ThreadListV2Section(props: {
   readonly label: string;
   readonly pane?: "screen" | "sidebar";
   readonly tone?: "default" | "snoozed";
+  readonly badge?: ReactNode;
   readonly disclosure?: {
     readonly expanded: boolean;
     readonly disabled?: boolean;
@@ -204,6 +230,7 @@ function ThreadListV2Section(props: {
           snoozed ? "bg-primary/20" : sidebarPane ? "bg-drawer-border" : "bg-border",
         )}
       />
+      {props.badge}
       {props.disclosure ? (
         <SymbolView
           name="chevron.down"
@@ -256,29 +283,70 @@ type ThreadListV2ShelfHeaderProps = {
   readonly expanded: boolean;
   readonly onToggle: () => void;
   readonly pane?: "screen" | "sidebar";
+  readonly showStatusCount?: boolean;
 };
 
-const SHELF_LABEL = { working: "Working", snoozed: "Snoozed", settled: "Settled" } as const;
+const SHELF_LABEL = {
+  pinned: "Pinned",
+  needsYou: "Needs you",
+  failed: "Failed",
+  completed: "Completed",
+  working: "Working",
+  snoozed: "Snoozed",
+  settled: "Settled",
+} as const;
 
 function ThreadListV2ShelfHeader(
   props: ThreadListV2ShelfHeaderProps & { readonly kind: keyof typeof SHELF_LABEL },
 ) {
   const label = SHELF_LABEL[props.kind];
+  const noun = props.kind === "needsYou" ? "needs-you" : props.kind;
+  // In project folders, sections whose rows share one status show it the way a folder does.
+  const badgeStatus = !props.showStatusCount
+    ? null
+    : props.kind === "working"
+      ? "working"
+      : props.kind === "completed"
+        ? "done"
+        : null;
   return (
     <ThreadListV2Section
-      label={props.expanded ? label : `${label} (${props.count})`}
+      label={props.expanded || badgeStatus !== null ? label : `${label} (${props.count})`}
+      badge={
+        badgeStatus !== null && !props.expanded ? (
+          <ThreadStatusCount status={badgeStatus} count={props.count} />
+        ) : undefined
+      }
       pane={props.pane}
       tone={props.kind === "snoozed" ? "snoozed" : "default"}
       disclosure={{
         expanded: props.expanded,
         disabled: props.disabled,
         onToggle: props.onToggle,
-        accessibilityLabel: `${props.count} ${props.kind} ${props.count === 1 ? "thread" : "threads"}`,
-        accessibilityHint: `${props.expanded ? "Collapses" : "Expands"} the ${props.kind} threads.`,
+        accessibilityLabel: `${props.count} ${noun} ${props.count === 1 ? "thread" : "threads"}`,
+        accessibilityHint: `${props.expanded ? "Collapses" : "Expands"} the ${noun} threads.`,
       }}
     />
   );
 }
+
+export const ThreadListV2PinnedShelfHeader = memo(function ThreadListV2PinnedShelfHeader(
+  props: ThreadListV2ShelfHeaderProps,
+) {
+  return <ThreadListV2ShelfHeader {...props} kind="pinned" />;
+});
+
+export const ThreadListV2ActiveDivider = memo(function ThreadListV2ActiveDivider(props: {
+  readonly pane?: "screen" | "sidebar";
+}) {
+  return <ThreadListV2Section label="Active" pane={props.pane} />;
+});
+
+export const ThreadListV2InboxShelfHeader = memo(function ThreadListV2InboxShelfHeader(
+  props: ThreadListV2ShelfHeaderProps & { readonly kind: ThreadListV2InboxKind },
+) {
+  return <ThreadListV2ShelfHeader {...props} />;
+});
 
 export const ThreadListV2WorkingShelfHeader = memo(function ThreadListV2WorkingShelfHeader(
   props: ThreadListV2ShelfHeaderProps,

@@ -1,6 +1,6 @@
 import type { OlderSettledScope } from "@t3tools/client-runtime/state/threads";
 import type { EnvironmentId } from "@t3tools/contracts";
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { scopedProjectKey } from "../../lib/scopedEntities";
 import {
@@ -13,8 +13,11 @@ import type { PendingNewTask } from "../../state/use-pending-new-tasks";
 import {
   buildThreadListV2Items,
   buildThreadListV2ListItems,
+  createThreadListInboxHold,
   getThreadListV2OrderedSection,
+  resolveThreadListV2InboxKind,
   threadListInboxReturns,
+  type ThreadListV2InboxFlags,
 } from "./threadListV2";
 import { computeThreadMoveAvailability } from "./threadOrder";
 import { buildProjectThreadList } from "./project-thread-list";
@@ -55,6 +58,9 @@ export function useThreadListV2(input: {
   readonly now: string;
   readonly pendingOrder: LayoutInput["pendingOrder"];
   readonly shelfPreferencesLoaded: boolean;
+  readonly pinnedShelfExpanded: boolean;
+  readonly inboxShelvesEnabled: ThreadListV2InboxFlags;
+  readonly inboxShelfExpanded: ThreadListV2InboxFlags;
   readonly workingShelfEnabled: boolean;
   readonly workingShelfExpanded: boolean;
   readonly snoozedShelfExpanded: boolean;
@@ -77,6 +83,19 @@ export function useThreadListV2(input: {
     () => threadListInboxReturns.observe(workingShelfEnabled ? threads : null),
     // oxlint-disable-next-line react/memo-dependencies -- the version signals an expired grace
     [threads, workingShelfEnabled, inboxVersion],
+  );
+  const [holdInbox] = useState(createThreadListInboxHold);
+  const selectedThread =
+    input.selectedThreadKey === null
+      ? undefined
+      : threads.find(
+          (thread) => `${thread.environmentId}:${thread.id}` === input.selectedThreadKey,
+        );
+  const heldInbox = holdInbox(
+    input.selectedThreadKey,
+    selectedThread === undefined
+      ? null
+      : resolveThreadListV2InboxKind(selectedThread, input.inboxShelvesEnabled),
   );
   // Up/down menu availability for every card, computed once per section per
   // rebuild (see computeThreadMoveAvailability): per-thread planner calls made
@@ -123,6 +142,10 @@ export function useThreadListV2(input: {
     queuedThreadKeys: input.queuedThreadKeys,
     settledLimit: input.settledLimit,
     now: input.now,
+    pinnedShelfExpanded: input.pinnedShelfExpanded,
+    inboxShelvesEnabled: input.inboxShelvesEnabled,
+    inboxShelfExpanded: input.inboxShelfExpanded,
+    heldInbox,
     workingShelfEnabled,
     workingShelfExpanded: input.workingShelfExpanded,
     inboxReturnAt: inbox.returnedAt,
@@ -162,6 +185,11 @@ export function useThreadListV2(input: {
   const flatItems = buildThreadListV2ListItems({
     items: layout.items,
     pendingTasks,
+    pinnedCount: layout.pinnedCount,
+    pinnedShelfExpanded: input.pinnedShelfExpanded,
+    inboxShelves: layout.inboxShelves,
+    inboxShelfExpanded: input.inboxShelfExpanded,
+    activeStartIndex: layout.activeStartIndex,
     workingCount: layout.workingCount,
     workingShelfExpanded: input.workingShelfExpanded,
     workingShelfHeaderIndex: layout.workingShelfHeaderIndex,

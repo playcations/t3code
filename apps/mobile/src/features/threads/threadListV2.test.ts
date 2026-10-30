@@ -33,6 +33,7 @@ import { threadJumpTarget } from "../keyboard/threadKeyboardShortcuts";
 import {
   buildThreadListV2Items,
   buildThreadListV2ListItems,
+  createThreadListInboxHold,
   getThreadListV2OrderedSection,
   resolveThreadListV2SnoozeMenuSelection,
   resolveThreadListV2SnoozePresets,
@@ -829,6 +830,188 @@ describe("buildThreadListV2ListItems", () => {
     expect(threadJumpTarget(items, "thread.jump.1")?.id).toBe("active");
     expect(threadJumpTarget(items, "thread.jump.2")?.id).toBe("settled");
     expect(threadJumpTarget(items, "thread.jump.3")).toBeNull();
+  });
+});
+
+describe("Pinned section", () => {
+  const threads = [
+    makeThread({ id: ThreadId.make("pin-open"), title: "pin-open", pinnedAt: NOW }),
+    makeThread({ id: ThreadId.make("pin-other"), title: "pin-other", pinnedAt: NOW }),
+    makeThread({ id: ThreadId.make("active"), title: "active" }),
+  ];
+  const listTypes = (pinnedShelfExpanded: boolean, selectedThreadKey: string | null) => {
+    const layout = buildThreadListV2Items({
+      threads,
+      environmentId: null,
+      searchQuery: "",
+      now: NOW,
+      pinnedShelfExpanded,
+      selectedThreadKey,
+    });
+    return buildThreadListV2ListItems({
+      items: layout.items,
+      pendingTasks: [],
+      pinnedCount: layout.pinnedCount,
+      pinnedShelfExpanded,
+      activeStartIndex: layout.activeStartIndex,
+    }).map((item) =>
+      item.type === "v2-thread"
+        ? item.item.thread.id
+        : item.type === "v2-pinned-shelf"
+          ? `pinned(${item.count})`
+          : item.type,
+    );
+  };
+
+  it("heads pinned threads and labels the active threads below them", () => {
+    expect(listTypes(true, null)).toEqual([
+      "pinned(2)",
+      "pin-open",
+      "pin-other",
+      "v2-active-divider",
+      "active",
+    ]);
+  });
+
+  it("collapses to its count but keeps the open thread", () => {
+    expect(listTypes(false, null)).toEqual(["pinned(2)", "v2-active-divider", "active"]);
+    expect(listTypes(false, `${environmentId}:pin-open`)).toEqual([
+      "pinned(2)",
+      "pin-open",
+      "v2-active-divider",
+      "active",
+    ]);
+  });
+});
+
+describe("inbox sections", () => {
+  const finishedRun = (id: string, status: "completed" | "failed") => ({
+    runId: RunId.make(`run-${id}`),
+    status,
+    requestedAt: "2026-06-01T00:00:00.000Z",
+    startedAt: "2026-06-01T00:00:00.000Z",
+    completedAt: "2026-06-01T01:00:00.000Z",
+    assistantMessageId: null,
+  });
+  const unread = { lastVisitedAt: "2026-06-01T00:30:00.000Z" };
+  const read = { lastVisitedAt: "2026-06-01T02:00:00.000Z" };
+  const threads = [
+    makeThread({ id: ThreadId.make("asks"), title: "asks", hasPendingApprovals: true }),
+    makeThread({
+      id: ThreadId.make("broke"),
+      title: "broke",
+      ...unread,
+      latestRun: finishedRun("broke", "failed"),
+      runtime: {
+        status: "failed",
+        activeRunId: null,
+        providerInstanceId: ProviderInstanceId.make("codex"),
+        providerName: "Codex",
+        lastError: "Run failed",
+        updatedAt: NOW,
+      },
+    }),
+    makeThread({
+      id: ThreadId.make("done"),
+      title: "done",
+      ...unread,
+      latestRun: finishedRun("done", "completed"),
+    }),
+    makeThread({
+      id: ThreadId.make("read"),
+      title: "read",
+      ...read,
+      latestRun: finishedRun("read", "completed"),
+    }),
+    makeThread({
+      id: ThreadId.make("pinned-done"),
+      title: "pinned-done",
+      ...unread,
+      pinnedAt: NOW,
+      latestRun: finishedRun("pinned-done", "completed"),
+    }),
+  ];
+  const all = { needsYou: true, failed: true, completed: true };
+  const list = (
+    input: Partial<Parameters<typeof buildThreadListV2Items>[0]> = {},
+    inboxShelfExpanded: Partial<Record<"needsYou" | "failed" | "completed", boolean>> = {},
+  ) => {
+    const layout = buildThreadListV2Items({
+      threads,
+      environmentId: null,
+      searchQuery: "",
+      now: NOW,
+      inboxShelvesEnabled: all,
+      inboxShelfExpanded,
+      ...input,
+    });
+    return buildThreadListV2ListItems({
+      items: layout.items,
+      pendingTasks: [],
+      inboxShelves: layout.inboxShelves,
+      inboxShelfExpanded,
+      activeStartIndex: layout.activeStartIndex,
+    }).map((item) =>
+      item.type === "v2-thread"
+        ? item.item.thread.id
+        : item.type === "v2-inbox-shelf"
+          ? `${item.kind}(${item.count})`
+          : item.type,
+    );
+  };
+
+  it("collects threads that want the user above the active list, leaving pinned in place", () => {
+    expect(list()).toEqual([
+      "pinned-done",
+      "needsYou(1)",
+      "asks",
+      "failed(1)",
+      "broke",
+      "completed(1)",
+      "done",
+      "v2-active-divider",
+      "read",
+    ]);
+  });
+
+  it("lists every thread as active when its section is off", () => {
+    expect(
+      list({ inboxShelvesEnabled: { needsYou: false, failed: false, completed: true } }),
+    ).toEqual([
+      "pinned-done",
+      "completed(1)",
+      "done",
+      "v2-active-divider",
+      "asks",
+      "broke",
+      "read",
+    ]);
+  });
+
+  it("collapses a section to its count but keeps the open thread", () => {
+    expect(list({}, { completed: false })).toContain("completed(1)");
+    expect(list({}, { completed: false })).not.toContain("done");
+    expect(list({ selectedThreadKey: `${environmentId}:done` }, { completed: false })).toContain(
+      "done",
+    );
+  });
+
+  it("holds an opened thread in its section until another thread is selected", () => {
+    const hold = createThreadListInboxHold();
+    const key = `${environmentId}:done`;
+    expect(hold(key, "completed")).toEqual({ key, kind: "completed" });
+    // Opening the thread marks it read; it stays put while it is open.
+    const held = hold(key, null);
+    expect(held).toEqual({ key, kind: "completed" });
+    expect(
+      list({
+        threads: threads.map((thread) => (thread.id === "done" ? { ...thread, ...read } : thread)),
+        heldInbox: held,
+        selectedThreadKey: key,
+      }),
+    ).toContain("completed(1)");
+    expect(hold(`${environmentId}:read`, null)).toBeNull();
+    expect(hold(key, null)).toBeNull();
   });
 });
 
