@@ -91,6 +91,8 @@ const SETTINGS_SEARCH_TERMS = {
     "link machine",
     "group by project",
     "project folders",
+    "not-so-boring sidebar",
+    "boring sidebar",
   ],
   SettingsEnvironmentMaintenance: ["updates", "provider updates", "restart", "manage environments"],
   SettingsAbout: [

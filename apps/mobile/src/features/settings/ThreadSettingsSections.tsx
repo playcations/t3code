@@ -185,7 +185,7 @@ export function WorkingSectionSettings() {
         <SettingsSwitchRow
           icon="bolt.circle"
           label="Working section"
-          {...(projectFoldersEnabled ? { subtitle: "Off while grouping by project in Labs." } : {})}
+          {...(projectFoldersEnabled ? { subtitle: "Off while Not-so-boring sidebar is on." } : {})}
           disabled={projectFoldersEnabled}
           value={workingShelfEnabled && !projectFoldersEnabled}
           onValueChange={(value) => savePreferences({ workingShelfEnabled: value })}
@@ -230,7 +230,7 @@ function ProjectFoldersSettingsSection() {
       <SettingsSection title="Beta: Thread list">
         <SettingsSwitchRow
           icon="folder"
-          label="Group by project"
+          label="Not-so-boring sidebar"
           value={projectFoldersEnabled}
           onValueChange={(value) => savePreferences({ projectFoldersEnabled: value })}
         />
