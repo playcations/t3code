@@ -28,8 +28,13 @@ export function buildProjectThreadList(input: {
     ),
   );
   const pinned: ThreadListV2ListItem[] = [];
+  const unfiled: ThreadListV2ListItem[] = [];
   const shelves: ThreadListV2ListItem[] = [];
   for (const item of input.items) {
+    if (item.type === "v2-pinned-shelf") {
+      pinned.unshift(item);
+      continue;
+    }
     if (
       item.type === "v2-snoozed-shelf" ||
       item.type === "v2-settled-shelf" ||
@@ -47,7 +52,7 @@ export function buildProjectThreadList(input: {
     const folder = folderByProject.get(scopedProjectKey(entity.environmentId, entity.projectId));
     // A shell can arrive before its project; keep the thread reachable during that gap.
     if (!folder) {
-      pinned.push(item);
+      unfiled.push(item);
       continue;
     }
     folder.inbox.push(item);
@@ -62,7 +67,7 @@ export function buildProjectThreadList(input: {
     }
   }
   const collapsed = new Set(input.collapsedProjectGroups);
-  const result: ThreadListV2ListItem[] = [...pinned];
+  const result: ThreadListV2ListItem[] = [...pinned, ...unfiled];
   for (const folder of folders) {
     const count = folder.inbox.length;
     if (count === 0) continue;

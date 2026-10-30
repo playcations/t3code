@@ -310,6 +310,9 @@ export interface ThreadListV2Layout {
   readonly hiddenSettledCount: number;
   /** The settled rows the shelf may list, before its visible limit. */
   readonly listedSettledThreads: ReadonlyArray<EnvironmentThreadShell>;
+  readonly pinnedCount: number;
+  /** Where unpinned rows start; the rows before it are the visible pinned ones. */
+  readonly activeStartIndex: number;
   readonly workingCount: number;
   readonly workingShelfHeaderIndex: number | null;
   readonly snoozedCount: number;
@@ -345,6 +348,20 @@ export interface ThreadListV2PendingListItem {
   readonly showPendingDivider: boolean;
   readonly showTrailingDivider: boolean;
   readonly inProjectFolder?: true;
+}
+
+export interface ThreadListV2PinnedShelfListItem {
+  readonly type: "v2-pinned-shelf";
+  readonly key: "v2-pinned-shelf";
+  readonly count: number;
+  readonly expanded: boolean;
+  readonly disabled: boolean;
+}
+
+/** Labels the active threads under the Pinned section, so they do not read as pinned. */
+export interface ThreadListV2ActiveDividerListItem {
+  readonly type: "v2-active-divider";
+  readonly key: "v2-active-divider";
 }
 
 export interface ThreadListV2WorkingShelfListItem {
@@ -388,6 +405,8 @@ export type ThreadListV2ListItem =
   | ThreadListV2ProjectHeaderItem
   | ThreadListV2ThreadListItem
   | ThreadListV2PendingListItem
+  | ThreadListV2PinnedShelfListItem
+  | ThreadListV2ActiveDividerListItem
   | ThreadListV2WorkingShelfListItem
   | ThreadListV2SnoozedShelfListItem
   | ThreadListV2SettledShelfListItem;
@@ -399,6 +418,8 @@ export function isThreadListV2ListItem(value: {
     value.type === "v2-project-header" ||
     value.type === "v2-thread" ||
     value.type === "v2-pending" ||
+    value.type === "v2-pinned-shelf" ||
+    value.type === "v2-active-divider" ||
     value.type === "v2-working-shelf" ||
     value.type === "v2-snoozed-shelf" ||
     value.type === "v2-settled-shelf"
@@ -449,6 +470,15 @@ export function threadListV2ListItemsAreEqual(
         previous.showTrailingDivider === item.showTrailingDivider &&
         previous.inProjectFolder === item.inProjectFolder
       );
+    case "v2-pinned-shelf":
+      return (
+        previous.type === "v2-pinned-shelf" &&
+        previous.count === item.count &&
+        previous.expanded === item.expanded &&
+        previous.disabled === item.disabled
+      );
+    case "v2-active-divider":
+      return previous.type === "v2-active-divider";
     case "v2-working-shelf":
       return (
         previous.type === "v2-working-shelf" &&
@@ -496,6 +526,9 @@ function resolveThreadListV2ItemTimeLabel(
 export function buildThreadListV2ListItems(input: {
   readonly items: ReadonlyArray<ThreadListV2Item>;
   readonly pendingTasks: ReadonlyArray<PendingNewTask>;
+  readonly pinnedCount?: number;
+  readonly pinnedShelfExpanded?: boolean;
+  readonly activeStartIndex?: number;
   readonly workingCount?: number;
   readonly workingShelfExpanded?: boolean;
   readonly workingShelfHeaderIndex?: number | null;
@@ -559,8 +592,24 @@ export function buildThreadListV2ListItems(input: {
   const snoozedEnd = settledShelfHeaderIndex ?? threadItems.length;
   const workingEnd = snoozedShelfHeaderIndex ?? snoozedEnd;
   const activeEnd = workingShelfHeaderIndex ?? workingEnd;
-  const result: ThreadListV2ListItem[] = [...pendingItems, ...threadItems.slice(0, activeEnd)];
   const shelfDisabled = input.shelfPreferencesLoading === true;
+  const pinnedCount = input.pinnedCount ?? 0;
+  const activeStart = Math.min(input.activeStartIndex ?? 0, activeEnd);
+  const result: ThreadListV2ListItem[] = [...pendingItems];
+  if (pinnedCount > 0) {
+    result.push({
+      type: "v2-pinned-shelf",
+      key: "v2-pinned-shelf",
+      count: pinnedCount,
+      expanded: input.pinnedShelfExpanded !== false,
+      disabled: shelfDisabled,
+    });
+    result.push(...threadItems.slice(0, activeStart));
+    if (activeStart < activeEnd) {
+      result.push({ type: "v2-active-divider", key: "v2-active-divider" });
+    }
+  }
+  result.push(...threadItems.slice(pinnedCount > 0 ? activeStart : 0, activeEnd));
   if (workingShelfHeaderIndex !== null && workingCount > 0) {
     result.push({
       type: "v2-working-shelf",
@@ -638,6 +687,7 @@ export function buildThreadListV2Items(input: {
   readonly snoozeEnvironmentIds?: ReadonlySet<EnvironmentId>;
   readonly settledLimit?: number;
   readonly now: string;
+  readonly pinnedShelfExpanded?: boolean;
   readonly workingShelfEnabled?: boolean;
   readonly workingShelfExpanded?: boolean;
   readonly isWorking?: (thread: EnvironmentThreadShell) => boolean;
@@ -763,6 +813,8 @@ export function buildThreadListV2Items(input: {
       })),
       hiddenSettledCount: 0,
       listedSettledThreads: [],
+      pinnedCount: 0,
+      activeStartIndex: 0,
       workingCount: 0,
       workingShelfHeaderIndex: null,
       snoozedCount: 0,
@@ -820,12 +872,19 @@ export function buildThreadListV2Items(input: {
           (thread) => `${thread.environmentId}:${thread.id}` === selectedThreadKey,
         );
 
-  const items: ThreadListV2Item[] = [];
-  for (const thread of applyPendingThreadOrder(
+  const orderedPinned = applyPendingThreadOrder(
     sortPinnedThreadsByOrderKey(pinned),
     "pinned",
     pending,
-  )) {
+  );
+  const visiblePinned =
+    input.pinnedShelfExpanded !== false
+      ? orderedPinned
+      : orderedPinned.filter(
+          (thread) => `${thread.environmentId}:${thread.id}` === selectedThreadKey,
+        );
+  const items: ThreadListV2Item[] = [];
+  for (const thread of visiblePinned) {
     items.push({
       thread,
       variant: "card",
@@ -835,6 +894,7 @@ export function buildThreadListV2Items(input: {
       isLast: false,
     });
   }
+  const activeStartIndex = items.length;
   for (const thread of orderedActive) {
     items.push({
       thread,
@@ -886,6 +946,8 @@ export function buildThreadListV2Items(input: {
     items,
     hiddenSettledCount: Math.max(0, settledTotal - pagedSettled.length),
     listedSettledThreads: listedSettled,
+    pinnedCount: orderedPinned.length,
+    activeStartIndex,
     workingCount: orderedWorking.length,
     workingShelfHeaderIndex,
     snoozedCount: orderedSnoozed.length,

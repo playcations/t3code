@@ -832,6 +832,57 @@ describe("buildThreadListV2ListItems", () => {
   });
 });
 
+describe("Pinned section", () => {
+  const threads = [
+    makeThread({ id: ThreadId.make("pin-open"), title: "pin-open", pinnedAt: NOW }),
+    makeThread({ id: ThreadId.make("pin-other"), title: "pin-other", pinnedAt: NOW }),
+    makeThread({ id: ThreadId.make("active"), title: "active" }),
+  ];
+  const listTypes = (pinnedShelfExpanded: boolean, selectedThreadKey: string | null) => {
+    const layout = buildThreadListV2Items({
+      threads,
+      environmentId: null,
+      searchQuery: "",
+      now: NOW,
+      pinnedShelfExpanded,
+      selectedThreadKey,
+    });
+    return buildThreadListV2ListItems({
+      items: layout.items,
+      pendingTasks: [],
+      pinnedCount: layout.pinnedCount,
+      pinnedShelfExpanded,
+      activeStartIndex: layout.activeStartIndex,
+    }).map((item) =>
+      item.type === "v2-thread"
+        ? item.item.thread.id
+        : item.type === "v2-pinned-shelf"
+          ? `pinned(${item.count})`
+          : item.type,
+    );
+  };
+
+  it("heads pinned threads and labels the active threads below them", () => {
+    expect(listTypes(true, null)).toEqual([
+      "pinned(2)",
+      "pin-open",
+      "pin-other",
+      "v2-active-divider",
+      "active",
+    ]);
+  });
+
+  it("collapses to its count but keeps the open thread", () => {
+    expect(listTypes(false, null)).toEqual(["pinned(2)", "v2-active-divider", "active"]);
+    expect(listTypes(false, `${environmentId}:pin-open`)).toEqual([
+      "pinned(2)",
+      "pin-open",
+      "v2-active-divider",
+      "active",
+    ]);
+  });
+});
+
 describe("pending mobile thread moves", () => {
   function fixture(section: "active" | "pinned" = "active") {
     const rows = ["a", "b", "c"].map((id, index) =>

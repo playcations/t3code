@@ -92,6 +92,7 @@ describe("project thread folders", () => {
     expect(
       result.map((item) => (item.type === "v2-thread" ? item.item.thread.id : item.type)),
     ).toEqual([
+      "v2-pinned-shelf",
       "b-pinned",
       "v2-project-header",
       "a-active",
