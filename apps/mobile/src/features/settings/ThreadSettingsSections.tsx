@@ -222,8 +222,8 @@ export function NewThreadSettingsSection() {
 function ProjectFoldersSettingsSection() {
   const savePreferences = useAtomSet(updateMobilePreferencesAtom);
   const preferences = useAtomValue(mobilePreferencesAtom);
-  const projectFoldersEnabled =
-    AsyncResult.isSuccess(preferences) && preferences.value.projectFoldersEnabled === true;
+  const loaded = AsyncResult.isSuccess(preferences);
+  const projectFoldersEnabled = loaded && preferences.value.projectFoldersEnabled === true;
 
   return (
     <View className="gap-3">
@@ -234,10 +234,33 @@ function ProjectFoldersSettingsSection() {
           value={projectFoldersEnabled}
           onValueChange={(value) => savePreferences({ projectFoldersEnabled: value })}
         />
+        {projectFoldersEnabled ? (
+          <>
+            <SettingsSwitchRow
+              icon="exclamationmark.shield"
+              label="Needs you section"
+              value={loaded && preferences.value.needsYouShelfEnabled === true}
+              onValueChange={(value) => savePreferences({ needsYouShelfEnabled: value })}
+            />
+            <SettingsSwitchRow
+              icon="exclamationmark.circle"
+              label="Failed section"
+              value={loaded && preferences.value.failedShelfEnabled === true}
+              onValueChange={(value) => savePreferences({ failedShelfEnabled: value })}
+            />
+            <SettingsSwitchRow
+              icon="checkmark.circle"
+              label="Completed section"
+              value={loaded && preferences.value.completedShelfEnabled === true}
+              onValueChange={(value) => savePreferences({ completedShelfEnabled: value })}
+            />
+          </>
+        ) : null}
       </SettingsSection>
       <Text className="px-2 text-sm text-foreground-muted">
         Group active threads into collapsible project folders. Pinned threads stay on top, and
-        Snoozed and Settled stay below the folders. Replaces the Working section.
+        Snoozed and Settled stay below the folders. Replaces the Working section. Needs you, Failed,
+        and Completed hold threads above the folders until you answer or open them.
       </Text>
     </View>
   );

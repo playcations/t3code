@@ -71,6 +71,7 @@ import {
   ThreadListV2SettledShelfHeader,
   ThreadListV2ShowMoreRow,
   ThreadListV2SnoozedShelfHeader,
+  ThreadListV2InboxShelfHeader,
   ThreadListV2WorkingShelfHeader,
 } from "./thread-list-v2-items";
 import { useThreadRowProviderInstanceResolver } from "./thread-provider-instance";
@@ -277,6 +278,9 @@ function ThreadNavigationSidebarPane(
     toggleSettledShelf,
     toggleSnoozedShelf,
     toggleWorkingShelf,
+    inboxShelvesEnabled,
+    inboxShelfExpanded,
+    toggleInboxShelf,
   } = useThreadListV2ShelfPreferences();
   const now = useThreadListNow(threads);
   const listEnvironments = useAtomValue(threadListEnvironmentsAtom);
@@ -316,6 +320,8 @@ function ThreadNavigationSidebarPane(
     pendingOrder,
     shelfPreferencesLoaded,
     workingShelfEnabled,
+    inboxShelvesEnabled,
+    inboxShelfExpanded,
     workingShelfExpanded,
     snoozedShelfExpanded,
     settledShelfExpanded,
@@ -607,7 +613,8 @@ function ThreadNavigationSidebarPane(
             reorderSupported={
               item.item.pinned
                 ? pinReorderEnvironmentIds.has(thread.environmentId)
-                : !workingShelfEnabled &&
+                : item.item.inbox === undefined &&
+                  !workingShelfEnabled &&
                   !projectFoldersEnabled &&
                   activeReorderEnvironmentIds.has(thread.environmentId)
             }
@@ -633,6 +640,17 @@ function ThreadNavigationSidebarPane(
             item={item}
             onToggle={() => toggleProjectGroup(item.projectKey)}
             onNewThread={() => props.onNewThreadInProject(item.project)}
+          />
+        );
+      case "v2-inbox-shelf":
+        return (
+          <ThreadListV2InboxShelfHeader
+            kind={item.kind}
+            count={item.count}
+            disabled={item.disabled}
+            expanded={item.expanded}
+            onToggle={() => toggleInboxShelf(item.kind)}
+            pane="sidebar"
           />
         );
       case "v2-working-shelf":

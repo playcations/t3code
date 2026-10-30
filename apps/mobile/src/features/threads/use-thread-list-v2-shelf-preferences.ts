@@ -2,6 +2,13 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/reactivity";
 
 import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
+import type { ThreadListV2InboxKind } from "./threadListV2";
+
+const INBOX_EXPANDED_PREFERENCE = {
+  needsYou: "threadListNeedsYouShelfExpanded",
+  failed: "threadListFailedShelfExpanded",
+  completed: "threadListCompletedShelfExpanded",
+} as const;
 
 export function useThreadListV2ShelfPreferences() {
   const preferencesResult = useAtomValue(mobilePreferencesAtom);
@@ -29,6 +36,25 @@ export function useThreadListV2ShelfPreferences() {
   };
   const workingShelfExpanded =
     loaded && preferencesResult.value.threadListWorkingShelfExpanded === true;
+  // Inbox sections belong to the project folder layout; the flat list stays as it is.
+  const inboxShelvesEnabled = {
+    needsYou: projectFoldersEnabled && preferencesResult.value.needsYouShelfEnabled === true,
+    failed: projectFoldersEnabled && preferencesResult.value.failedShelfEnabled === true,
+    completed: projectFoldersEnabled && preferencesResult.value.completedShelfEnabled === true,
+  };
+  // Inbox sections start open: they only list threads that want the user.
+  const inboxShelfExpanded = {
+    needsYou: !loaded || preferencesResult.value.threadListNeedsYouShelfExpanded !== false,
+    failed: !loaded || preferencesResult.value.threadListFailedShelfExpanded !== false,
+    completed: !loaded || preferencesResult.value.threadListCompletedShelfExpanded !== false,
+  };
+  const toggleInboxShelf = (kind: ThreadListV2InboxKind) => {
+    if (!loaded) return;
+    const preference = INBOX_EXPANDED_PREFERENCE[kind];
+    savePreferences({
+      transform: (current) => ({ [preference]: current[preference] === false }),
+    });
+  };
 
   // Transforms read optimistic state so same-frame presses toggle twice.
   const toggleSnoozedShelf = () => {
@@ -65,6 +91,9 @@ export function useThreadListV2ShelfPreferences() {
     snoozedShelfExpanded,
     workingShelfEnabled,
     workingShelfExpanded,
+    inboxShelvesEnabled,
+    inboxShelfExpanded,
+    toggleInboxShelf,
     toggleSettledShelf,
     toggleSnoozedShelf,
     toggleWorkingShelf,

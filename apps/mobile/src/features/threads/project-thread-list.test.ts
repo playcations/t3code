@@ -285,6 +285,32 @@ describe("project thread folders", () => {
     ).toEqual([b.id]);
   });
 
+  it("keeps inbox sections above the folders and their threads out of them", () => {
+    const { a, b, input } = setup();
+    const layout = buildThreadListV2Items({
+      threads: [
+        thread("a-idle", a),
+        thread("b-asks", b, { hasPendingApprovals: true }),
+        thread("a-asks", a, { hasPendingApprovals: true }),
+      ],
+      environmentId: null,
+      searchQuery: "",
+      now,
+      inboxShelvesEnabled: { needsYou: true, failed: true, completed: true },
+    });
+    const items = buildThreadListV2ListItems({ ...layout, pendingTasks: [] });
+    const result = buildProjectThreadList({ ...input, items });
+    expect(
+      result.map((item) =>
+        item.type === "v2-thread"
+          ? item.item.thread.id
+          : item.type === "v2-project-header"
+            ? `folder:${item.title}(${item.count})`
+            : item.type,
+      ),
+    ).toEqual(["v2-inbox-shelf", "a-asks", "b-asks", "folder:A(1)", "a-idle"]);
+  });
+
   it("updates recycled headers when collapse or attention state changes", () => {
     const { input } = setup();
     const header = buildProjectThreadList(input).find((item) => item.type === "v2-project-header")!;

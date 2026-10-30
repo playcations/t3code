@@ -93,6 +93,10 @@ const SETTINGS_SEARCH_TERMS = {
     "project folders",
     "not-so-boring sidebar",
     "boring sidebar",
+    "needs you",
+    "failed section",
+    "completed section",
+    "inbox",
   ],
   SettingsEnvironmentMaintenance: ["updates", "provider updates", "restart", "manage environments"],
   SettingsAbout: [

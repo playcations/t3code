@@ -28,8 +28,14 @@ export function buildProjectThreadList(input: {
     ),
   );
   const pinned: ThreadListV2ListItem[] = [];
+  // Inbox sections stay above the folders: they collect what wants the user across projects.
+  const inbox: ThreadListV2ListItem[] = [];
   const shelves: ThreadListV2ListItem[] = [];
   for (const item of input.items) {
+    if (item.type === "v2-inbox-shelf" || (item.type === "v2-thread" && item.item.inbox)) {
+      inbox.push(item);
+      continue;
+    }
     if (
       item.type === "v2-snoozed-shelf" ||
       item.type === "v2-settled-shelf" ||
@@ -62,7 +68,7 @@ export function buildProjectThreadList(input: {
     }
   }
   const collapsed = new Set(input.collapsedProjectGroups);
-  const result: ThreadListV2ListItem[] = [...pinned];
+  const result: ThreadListV2ListItem[] = [...pinned, ...inbox];
   for (const folder of folders) {
     const count = folder.inbox.length;
     if (count === 0) continue;
