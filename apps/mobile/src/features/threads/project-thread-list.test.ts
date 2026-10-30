@@ -2,7 +2,7 @@ import type {
   EnvironmentProject,
   EnvironmentThreadShell,
 } from "@t3tools/client-runtime/state/shell";
-import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, RunId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { PendingDraftTask } from "../../state/pending-new-tasks-model";
@@ -283,6 +283,58 @@ describe("project thread folders", () => {
         .filter((item) => item.type === "v2-pending")
         .map((item) => item.pendingTask.projectId),
     ).toEqual([b.id]);
+  });
+
+  it("counts each folder's working and unread done threads for its header", () => {
+    const { a, b, input } = setup();
+    const running = {
+      status: "running" as const,
+      activeRunId: null,
+      providerInstanceId: ProviderInstanceId.make("codex"),
+      providerName: "Codex",
+      lastError: null,
+      updatedAt: now,
+    };
+    const finished = (id: string, lastVisitedAt: string) =>
+      thread(id, a, {
+        lastVisitedAt,
+        latestRun: {
+          runId: RunId.make(`run-${id}`),
+          status: "completed",
+          requestedAt: "2026-10-21T10:00:00.000Z",
+          startedAt: "2026-10-21T10:00:00.000Z",
+          completedAt: "2026-10-21T11:00:00.000Z",
+          assistantMessageId: null,
+        },
+      });
+    const layout = buildThreadListV2Items({
+      threads: [
+        thread("a-busy", a, { runtime: running }),
+        thread("a-busy-2", a, { runtime: running }),
+        finished("a-done", "2026-10-21T10:30:00.000Z"),
+        finished("a-read", "2026-10-21T11:30:00.000Z"),
+        thread("b-idle", b),
+      ],
+      environmentId: null,
+      searchQuery: "",
+      now,
+    });
+    const items = buildThreadListV2ListItems({ ...layout, pendingTasks: [] });
+    const headers = buildProjectThreadList({ ...input, items }).filter(
+      (item) => item.type === "v2-project-header",
+    );
+    expect(
+      headers.map(({ title, count, workingCount, doneCount, needsAttention }) => ({
+        title,
+        count,
+        workingCount,
+        doneCount,
+        needsAttention,
+      })),
+    ).toEqual([
+      { title: "A", count: 4, workingCount: 2, doneCount: 1, needsAttention: false },
+      { title: "B", count: 1, workingCount: 0, doneCount: 0, needsAttention: false },
+    ]);
   });
 
   it("updates recycled headers when collapse or attention state changes", () => {

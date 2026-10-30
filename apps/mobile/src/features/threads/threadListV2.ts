@@ -380,6 +380,8 @@ export interface ThreadListV2ProjectHeaderItem {
   readonly project: EnvironmentProject;
   readonly count: number;
   readonly needsAttention: boolean;
+  readonly workingCount: number;
+  readonly doneCount: number;
   readonly expanded: boolean;
   readonly disabled: boolean;
 }
@@ -419,6 +421,8 @@ export function threadListV2ListItemsAreEqual(
         previous.project === item.project &&
         previous.count === item.count &&
         previous.needsAttention === item.needsAttention &&
+        previous.workingCount === item.workingCount &&
+        previous.doneCount === item.doneCount &&
         previous.expanded === item.expanded &&
         previous.disabled === item.disabled
       );

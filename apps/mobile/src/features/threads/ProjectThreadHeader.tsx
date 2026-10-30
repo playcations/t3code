@@ -6,6 +6,7 @@ import { AppText as Text } from "../../components/ui/AppText";
 import { SymbolView } from "../../components/ui/AppSymbol";
 import { ProjectFavicon } from "../../components/ProjectFavicon";
 import type { ThreadListV2ProjectHeaderItem } from "./threadListV2";
+import { ThreadStatusCount } from "./thread-list-v2-items";
 
 export function ProjectThreadHeader(props: {
   readonly item: ThreadListV2ProjectHeaderItem;
@@ -19,7 +20,18 @@ export function ProjectThreadHeader(props: {
     <View className={cn("mt-1 flex-row items-center", sidebar ? "mx-1" : "mx-2")}>
       <RowPressable
         accessibilityRole="button"
-        accessibilityLabel={`${item.title}, ${item.count} threads${!item.expanded && item.needsAttention ? ", needs attention" : ""}`}
+        accessibilityLabel={[
+          `${item.title}, ${item.count} threads`,
+          ...(item.expanded
+            ? []
+            : [
+                item.workingCount > 0 ? `${item.workingCount} working` : null,
+                item.doneCount > 0 ? `${item.doneCount} done` : null,
+                item.needsAttention ? "needs attention" : null,
+              ]),
+        ]
+          .filter((part) => part !== null)
+          .join(", ")}
         accessibilityState={{ expanded: item.expanded, disabled: item.disabled }}
         disabled={item.disabled}
         onPress={props.onToggle}
@@ -48,6 +60,12 @@ export function ProjectThreadHeader(props: {
         >
           {item.title}
         </Text>
+        {!item.expanded ? (
+          <>
+            <ThreadStatusCount status="working" count={item.workingCount} />
+            <ThreadStatusCount status="done" count={item.doneCount} />
+          </>
+        ) : null}
         {!item.expanded && item.needsAttention ? (
           <View className="h-2 w-2 rounded-full bg-primary" />
         ) : null}

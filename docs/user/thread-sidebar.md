@@ -157,7 +157,8 @@ is off. Each device keeps its own choice.
 
 On mobile, turn on **Settings → Labs → Not-so-boring sidebar**. Tap a folder header to open or close
 it, or tap its pen button to start a thread in that project. A search opens every folder with a
-match without changing which folders you left closed.
+match without changing which folders you left closed. A closed folder also counts its threads that are
+working and those that finished since you last opened them, with the same icons as their rows.
 
 ## Settle finished work
 

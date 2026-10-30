@@ -19,6 +19,8 @@ export function buildProjectThreadList(input: {
     scope,
     inbox: [] as Array<ThreadListV2ThreadListItem | ThreadListV2PendingListItem>,
     needsAttention: false,
+    workingCount: 0,
+    doneCount: 0,
   }));
   const folderByProject = new Map(
     folders.flatMap((folder) =>
@@ -56,9 +58,12 @@ export function buildProjectThreadList(input: {
       folder.needsAttention ||=
         status === "approval" ||
         status === "input" ||
+        status === "request" ||
         status === "failed" ||
-        status === "limited" ||
-        threadHasUnseenCompletion(item.item.thread);
+        status === "limited";
+      // The counts match the row labels: Working and Waiting share a dashed circle, Done a check.
+      if (status === "working" || status === "waiting") folder.workingCount += 1;
+      if (status === "ready" && threadHasUnseenCompletion(item.item.thread)) folder.doneCount += 1;
     }
   }
   const collapsed = new Set(input.collapsedProjectGroups);
@@ -76,6 +81,8 @@ export function buildProjectThreadList(input: {
       project: folder.scope.representative,
       count,
       needsAttention: folder.needsAttention,
+      workingCount: folder.workingCount,
+      doneCount: folder.doneCount,
       expanded,
       disabled: input.disabled,
     });

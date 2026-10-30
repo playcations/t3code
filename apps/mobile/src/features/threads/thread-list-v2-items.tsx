@@ -88,6 +88,12 @@ interface StatusLabel {
   readonly className: string;
   readonly iconTintClassName: string;
 }
+const WORKING_STATUS_LABEL: StatusLabel = {
+  label: "Working",
+  icon: "circle.dashed",
+  className: "text-adaptive-sky-600-400",
+  iconTintClassName: "accent-adaptive-sky-600-400",
+};
 const STATUS_LABEL_BY_STATUS: Partial<Record<ThreadListV2Status, StatusLabel>> = {
   approval: {
     label: "Approval",
@@ -107,12 +113,7 @@ const STATUS_LABEL_BY_STATUS: Partial<Record<ThreadListV2Status, StatusLabel>> =
     className: "text-adaptive-fuchsia-600-300",
     iconTintClassName: "accent-adaptive-fuchsia-600-300",
   },
-  working: {
-    label: "Working",
-    icon: "circle.dashed",
-    className: "text-adaptive-sky-600-400",
-    iconTintClassName: "accent-adaptive-sky-600-400",
-  },
+  working: WORKING_STATUS_LABEL,
   waiting: {
     label: "Waiting",
     icon: "circle.dashed.inset.filled",
@@ -138,6 +139,29 @@ const DONE_STATUS_LABEL: StatusLabel = {
   className: "text-adaptive-emerald-700-300",
   iconTintClassName: "accent-adaptive-emerald-700-300",
 };
+
+/** A status icon in its row color with a count, for headers that hide their rows. */
+export function ThreadStatusCount(props: {
+  readonly status: "working" | "done";
+  readonly count: number;
+}) {
+  const label = props.status === "done" ? DONE_STATUS_LABEL : WORKING_STATUS_LABEL;
+  if (props.count === 0) return null;
+  return (
+    <View className="flex-row items-center gap-0.5">
+      <SymbolView
+        name={label.icon}
+        size={12}
+        tintColorClassName={label.iconTintClassName}
+        type="monochrome"
+        weight="semibold"
+      />
+      <Text className={cn("text-xs font-t3-medium tabular-nums", label.className)}>
+        {props.count}
+      </Text>
+    </View>
+  );
+}
 
 function ThreadListV2Duration(props: { readonly startedAt: string | null }) {
   const startedAtMs = Date.parse(props.startedAt ?? "");
