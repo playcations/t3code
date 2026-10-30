@@ -11,6 +11,8 @@ export interface AppBarAction {
   readonly loading?: boolean;
   readonly selected?: boolean;
   readonly tintColor?: ColorValue;
+  /** Android lists it only in the More actions menu. */
+  readonly overflowOnly?: boolean;
 }
 
 export type AppBarMenuItem =

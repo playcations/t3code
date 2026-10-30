@@ -23,6 +23,7 @@ export function ThreadHeader(
   const { layout, panes, toggleAuxiliaryPane, composerKeyboardActive } =
     useAdaptiveWorkspaceLayout();
   const { onOpenTerminal, onMergeBack } = props.gitControls;
+  const { threadActions } = props;
   const native = useThreadHeaderOptions(props);
   const androidHeaderActions = useMemo<ReadonlyArray<AppBarAction>>(() => {
     const actions: AppBarAction[] = [];
@@ -61,6 +62,15 @@ export function ThreadHeader(
         onPress: onMergeBack,
       });
     }
+    if (threadActions) {
+      actions.push({
+        accessibilityLabel: "Mark unread",
+        icon: "circle.fill",
+        disabled: threadActions.markUnreadDisabled,
+        onPress: threadActions.onMarkUnread,
+        overflowOnly: true,
+      });
+    }
     return actions;
   }, [
     props.inspectorMode,
@@ -74,6 +84,7 @@ export function ThreadHeader(
     props.hasThreadCwd,
     props.hasWorkspaceRoot,
     props.gitControls.canOpenTerminal,
+    threadActions,
   ]);
 
   return (
