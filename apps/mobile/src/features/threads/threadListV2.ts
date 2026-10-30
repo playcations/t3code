@@ -334,6 +334,8 @@ export interface ThreadListV2ThreadListItem {
   readonly hasQueuedMessages: boolean;
   readonly canMoveUp: boolean;
   readonly canMoveDown: boolean;
+  /** Listed under a project folder header, so the row leaves out its own project. */
+  readonly inProjectFolder?: true;
 }
 
 export interface ThreadListV2PendingListItem {
@@ -342,6 +344,7 @@ export interface ThreadListV2PendingListItem {
   readonly pendingTask: PendingNewTask;
   readonly showPendingDivider: boolean;
   readonly showTrailingDivider: boolean;
+  readonly inProjectFolder?: true;
 }
 
 export interface ThreadListV2WorkingShelfListItem {
@@ -434,7 +437,8 @@ export function threadListV2ListItemsAreEqual(
         previous.showTrailingDivider === item.showTrailingDivider &&
         previous.hasQueuedMessages === item.hasQueuedMessages &&
         previous.canMoveUp === item.canMoveUp &&
-        previous.canMoveDown === item.canMoveDown
+        previous.canMoveDown === item.canMoveDown &&
+        previous.inProjectFolder === item.inProjectFolder
       );
     case "v2-pending":
       return (
@@ -442,7 +446,8 @@ export function threadListV2ListItemsAreEqual(
         previous.key === item.key &&
         previous.pendingTask === item.pendingTask &&
         previous.showPendingDivider === item.showPendingDivider &&
-        previous.showTrailingDivider === item.showTrailingDivider
+        previous.showTrailingDivider === item.showTrailingDivider &&
+        previous.inProjectFolder === item.inProjectFolder
       );
     case "v2-working-shelf":
       return (

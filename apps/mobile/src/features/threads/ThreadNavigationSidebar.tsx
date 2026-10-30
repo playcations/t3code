@@ -537,6 +537,7 @@ function ThreadNavigationSidebarPane(
             environmentMachine={machineByEnvironmentId.get(item.pendingTask.environmentId)}
             pane="sidebar"
             showPendingDivider={item.showPendingDivider}
+            hideProject={item.inProjectFolder === true}
             onSelectPendingTask={props.onOpenPendingTask}
             onDeletePendingTask={confirmDeletePendingTask}
             fullSwipeWidth={props.width - 20}
@@ -561,7 +562,7 @@ function ThreadNavigationSidebarPane(
             snoozePresetMinute={item.snoozePresetMinute ?? ""}
             snoozeWakeLabelText={item.snoozeWakeLabelText}
             timeLabel={item.timeLabel}
-            project={projectByKey.get(scopeKey) ?? null}
+            project={item.inProjectFolder ? null : (projectByKey.get(scopeKey) ?? null)}
             providerInstance={resolveProviderInstance(thread)}
             providers={providersByEnvironmentId.get(thread.environmentId)}
             environmentLabel={

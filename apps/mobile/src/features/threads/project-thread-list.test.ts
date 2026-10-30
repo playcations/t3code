@@ -109,6 +109,14 @@ describe("project thread folders", () => {
       needsAttention: true,
     });
   });
+  it("marks only rows under a folder header as leaving out their project", () => {
+    const { input } = setup();
+    const inFolder = buildProjectThreadList(input)
+      .filter((item) => item.type === "v2-thread")
+      .filter((item) => item.inProjectFolder === true)
+      .map((item) => item.item.thread.id);
+    expect(inFolder).toEqual(["a-active", "b-active"]);
+  });
   it("collapses only the selected project and restores its rows when reopened", () => {
     const { input } = setup();
     const result = buildProjectThreadList({

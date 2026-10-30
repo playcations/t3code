@@ -4,6 +4,8 @@ import {
   resolveThreadListV2Status,
   threadHasUnseenCompletion,
   type ThreadListV2ListItem,
+  type ThreadListV2PendingListItem,
+  type ThreadListV2ThreadListItem,
 } from "./threadListV2";
 
 export function buildProjectThreadList(input: {
@@ -15,7 +17,7 @@ export function buildProjectThreadList(input: {
 }): ThreadListV2ListItem[] {
   const folders = input.scopes.map((scope) => ({
     scope,
-    inbox: [] as ThreadListV2ListItem[],
+    inbox: [] as Array<ThreadListV2ThreadListItem | ThreadListV2PendingListItem>,
     needsAttention: false,
   }));
   const folderByProject = new Map(
@@ -79,8 +81,10 @@ export function buildProjectThreadList(input: {
     });
     if (!expanded) continue;
     result.push(
-      ...folder.inbox.map((item, index) =>
-        item.type === "v2-pending" ? { ...item, showPendingDivider: index === 0 } : item,
+      ...folder.inbox.map((item, index): ThreadListV2ListItem =>
+        item.type === "v2-pending"
+          ? { ...item, showPendingDivider: index === 0, inProjectFolder: true }
+          : { ...item, inProjectFolder: true },
       ),
     );
   }

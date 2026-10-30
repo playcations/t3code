@@ -55,19 +55,6 @@ in a new thread's model picker to add or remove them. A regular click returns to
 single model. Choose a base branch and send. Each selection starts a separate thread
 and worktree while you stay in the new thread composer. This requires a Git project.
 
-## Group chats by project on mobile
-
-Turn on **Settings → Organization → Group chats by project** to use collapsible
-project folders for active and unsent chats. Projects with no active or unsent chats
-are hidden. Pinned chats stay above the folders; snoozed and settled chats keep their
-own shared sections. Search shows matches inside collapsed project folders without
-changing your saved collapse state.
-The Working section and active-thread reordering are unavailable in this layout.
-Turn the setting off to return to the flat list.
-
-The project identity setting on the same page controls whether matching repositories
-across workspaces and environments share a folder.
-
 ## Pin and reorder threads
 
 Pin a thread from its menu to keep it above your active work.
@@ -167,6 +154,10 @@ many threads it holds, and a dot when one of them needs you. Use the pen button 
 right-click it, to start a thread in that project. Pinned threads stay above the folders, and
 Snoozed and Settled stay below them. In this mode you cannot drag threads, and the Working section
 is off. Each device keeps its own choice.
+
+On mobile, turn on **Settings → Labs → Group by project**. Tap a folder header to open or close
+it, or tap its pen button to start a thread in that project. A search opens every folder with a
+match without changing which folders you left closed.
 
 ## Settle finished work
 

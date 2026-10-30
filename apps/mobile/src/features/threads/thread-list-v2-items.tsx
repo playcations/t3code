@@ -355,6 +355,8 @@ export const ThreadListV2PendingRow = memo(function ThreadListV2PendingRow(props
   readonly pane?: "screen" | "sidebar";
   readonly showPendingDivider: boolean;
   readonly showTrailingDivider?: boolean;
+  /** Under a project folder header, which already names the project. */
+  readonly hideProject?: boolean;
   readonly onSelectPendingTask: (pendingTask: PendingNewTask) => void;
   readonly onDeletePendingTask: (pendingTask: PendingNewTask) => void;
   readonly fullSwipeWidth?: number;
@@ -419,7 +421,7 @@ export const ThreadListV2PendingRow = memo(function ThreadListV2PendingRow(props
   const rowContent = (
     <>
       <View className="flex-row items-center gap-1.5">
-        {props.project ? (
+        {props.project && !props.hideProject ? (
           <ProjectFavicon
             environmentId={pendingTask.environmentId}
             faviconPath={props.project.faviconPath}
@@ -436,7 +438,7 @@ export const ThreadListV2PendingRow = memo(function ThreadListV2PendingRow(props
           )}
           numberOfLines={1}
         >
-          {projectTitle}
+          {props.hideProject ? "" : projectTitle}
         </Text>
         {isDraft ? (
           <View className="flex-row items-center gap-1">

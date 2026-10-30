@@ -536,6 +536,7 @@ export function HomeScreen(props: HomeScreenProps) {
           }
           environmentMachine={machineByEnvironmentId.get(item.pendingTask.environmentId)}
           showPendingDivider={item.showPendingDivider}
+          hideProject={item.inProjectFolder === true}
           showTrailingDivider={item.showTrailingDivider}
           onSelectPendingTask={props.onSelectPendingTask}
           onDeletePendingTask={props.onDeletePendingTask}
@@ -594,7 +595,11 @@ export function HomeScreen(props: HomeScreenProps) {
         snoozeWakeLabelText={item.snoozeWakeLabelText}
         timeLabel={item.timeLabel}
         showTrailingDivider={item.showTrailingDivider}
-        project={projectByKey.get(scopedProjectKey(thread.environmentId, thread.projectId)) ?? null}
+        project={
+          item.inProjectFolder
+            ? null
+            : (projectByKey.get(scopedProjectKey(thread.environmentId, thread.projectId)) ?? null)
+        }
         providerInstance={resolveProviderInstance(thread)}
         providers={providersByEnvironmentId.get(thread.environmentId)}
         environmentLabel={

@@ -19,7 +19,7 @@ export function ProjectThreadHeader(props: {
     <View className={cn("mt-1 flex-row items-center", sidebar ? "mx-1" : "mx-2")}>
       <RowPressable
         accessibilityRole="button"
-        accessibilityLabel={`${item.title}, ${item.count} chats${!item.expanded && item.needsAttention ? ", needs attention" : ""}`}
+        accessibilityLabel={`${item.title}, ${item.count} threads${!item.expanded && item.needsAttention ? ", needs attention" : ""}`}
         accessibilityState={{ expanded: item.expanded, disabled: item.disabled }}
         disabled={item.disabled}
         onPress={props.onToggle}
