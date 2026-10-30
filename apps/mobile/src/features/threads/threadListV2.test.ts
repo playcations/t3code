@@ -41,6 +41,7 @@ import {
   resolveThreadListV2WokeAt,
   sortThreadsForListV2,
   threadListV2ListItemsAreEqual,
+  threadCanMarkUnread,
   threadHasUnseenCompletion,
   type ThreadListV2ListItem,
 } from "./threadListV2";
@@ -159,6 +160,40 @@ describe("resolveThreadListV2Status", () => {
       expect(threadHasUnseenCompletion(thread)).toBe(true);
     },
   );
+
+  it.each([
+    { name: "a seen finished run", completedAt: NOW, lastVisitedAt: NOW, expected: true },
+    {
+      name: "an unseen finished run",
+      completedAt: NOW,
+      lastVisitedAt: "2026-06-01T23:59:00.000Z",
+      expected: false,
+    },
+    { name: "no finished run", completedAt: null, lastVisitedAt: NOW, expected: false },
+    {
+      name: "a server without visits",
+      completedAt: NOW,
+      lastVisitedAt: undefined,
+      expected: false,
+    },
+  ])("offers mark unread for $name: $expected", ({ completedAt, lastVisitedAt, expected }) => {
+    expect(
+      threadCanMarkUnread({
+        lastVisitedAt,
+        latestRun:
+          completedAt === null
+            ? null
+            : {
+                runId: RunId.make("run-mark-unread"),
+                status: "completed",
+                requestedAt: NOW,
+                startedAt: NOW,
+                completedAt,
+                assistantMessageId: null,
+              },
+      }),
+    ).toBe(expected);
+  });
 });
 
 describe("queued messages keep a settled thread active", () => {

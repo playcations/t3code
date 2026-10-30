@@ -227,6 +227,17 @@ export function threadHasUnseenCompletion(
   return completedAtMs > lastVisitedAtMs;
 }
 
+/** Marking unread rewinds the visit to before the last finished run, so it needs one already seen. */
+export function threadCanMarkUnread(
+  thread: Pick<EnvironmentThreadShell, "latestRun" | "lastVisitedAt">,
+): boolean {
+  return (
+    thread.lastVisitedAt !== undefined &&
+    thread.latestRun?.completedAt != null &&
+    !threadHasUnseenCompletion(thread)
+  );
+}
+
 export function resolveThreadListV2WokeAt(
   thread: EnvironmentThreadShell,
   options: { readonly now: string },
