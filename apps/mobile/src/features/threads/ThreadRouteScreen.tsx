@@ -81,6 +81,7 @@ import { useThreadComposerState } from "../../state/use-thread-composer-state";
 import { resolveMergeBackTargetThreadId } from "@t3tools/client-runtime/state/thread-relationships";
 import { resolveLatestMergeBackRun } from "@t3tools/client-runtime/state/thread-workflows";
 import { threadEnvironment, useThreadFamily } from "../../state/threads";
+import { threadCanMarkUnread } from "./threadListV2";
 import { EMPTY_ENVIRONMENT_THREAD_STATE } from "@t3tools/client-runtime/state/threads";
 import { useProjects } from "../../state/entities";
 import { projectThreadContentPresentation } from "./threadContentPresentation";
@@ -420,6 +421,7 @@ function ThreadRouteContent(
   const selectDetail = useSelectWorkspaceDetail();
   const openPullRequest = useOpenPullRequest();
   const mergeBack = useAtomCommand(threadEnvironment.mergeBack, "merge thread back");
+  const markThreadUnread = useAtomCommand(threadEnvironment.markUnread, "mark thread unread");
   const mergeBackTargetThreadId = resolveMergeBackTargetThreadId(selectedThreadDetail);
   const mergeBackRun =
     selectedThreadDetail === null ? null : resolveLatestMergeBackRun(selectedThreadDetail);
@@ -991,6 +993,14 @@ function ThreadRouteContent(
                 onOpenGitInspector={handleOpenGitInspector}
                 onOpenFilesInspector={handleOpenFilesInspector}
                 onReturnToThread={props.onReturnToThread}
+                threadActions={{
+                  markUnreadDisabled: !threadCanMarkUnread(selectedThread),
+                  onMarkUnread: () =>
+                    void markThreadUnread({
+                      environmentId: selectedThread.environmentId,
+                      input: { threadId: selectedThread.id },
+                    }),
+                }}
               />
             )
           }

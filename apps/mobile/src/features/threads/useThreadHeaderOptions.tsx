@@ -15,6 +15,11 @@ import {
 
 type NativeHeaderItems = ReadonlyArray<Record<string, unknown>>;
 
+export interface ThreadHeaderActions {
+  readonly markUnreadDisabled: boolean;
+  readonly onMarkUnread: () => void;
+}
+
 export function useThreadHeaderOptions(props: {
   readonly title: string;
   readonly subtitle: string;
@@ -23,6 +28,7 @@ export function useThreadHeaderOptions(props: {
   readonly gitControls: Parameters<typeof ThreadGitControls>[0];
   readonly onReturnToThread?: () => void;
   readonly draft?: boolean;
+  readonly threadActions?: ThreadHeaderActions;
 }) {
   const usesNativeWorkspaceColumns = useNativeWorkspaceColumnsSupported();
   const deviceType = useDeviceType();
@@ -66,6 +72,30 @@ export function useThreadHeaderOptions(props: {
         ]
       : []),
   ];
+  const threadActionItems: NativeHeaderItems = props.threadActions
+    ? [
+        {
+          accessibilityLabel: "Thread actions",
+          icon: { name: "ellipsis.circle", type: "sfSymbol" as const },
+          identifier: "thread-right-actions",
+          menu: {
+            items: [
+              {
+                disabled: props.threadActions.markUnreadDisabled,
+                icon: { name: "circle.fill", type: "sfSymbol" as const },
+                label: "Mark unread",
+                onPress: props.threadActions.onMarkUnread,
+                type: "action" as const,
+              },
+            ],
+            title: "Thread",
+          },
+          sharesBackground: true,
+          type: "menu" as const,
+          variant: "plain" as const,
+        },
+      ]
+    : [];
   const canGoBack = navigation.canGoBack();
   const compactHomeHeaderItems: NativeHeaderItems = [
     withNativeGlassHeaderItem({
@@ -88,8 +118,12 @@ export function useThreadHeaderOptions(props: {
         ? undefined
         : () => compactHomeHeaderItems,
     // The workspace navigator adds compose to the Duo detail column's bar.
-    unstable_headerRightItems: () =>
-      usesDuoHeader || layout.usesSplitView ? threadCenterHeaderItems : compactRightHeaderItems,
+    unstable_headerRightItems: () => [
+      ...(usesDuoHeader || layout.usesSplitView
+        ? threadCenterHeaderItems
+        : compactRightHeaderItems),
+      ...threadActionItems,
+    ],
     unstable_headerToolbarItems: () => [],
     unstable_headerSubtitle: props.usesNativeHeaderGlass ? props.subtitle : undefined,
     contentStyle: undefined,
@@ -101,6 +135,7 @@ export function useThreadHeaderOptions(props: {
     optionsVersion: [
       splitLeftHeaderItems,
       threadCenterHeaderItems,
+      threadActionItems,
       compactRightHeaderItems,
       usesDuoHeader,
       environmentId,
