@@ -150,7 +150,8 @@ cannot drag or move threads within it. Your saved order returns when you turn it
 With **Not-so-boring sidebar** on, **Settings → Labs** also has **Needs you section**, **Failed
 section**, and **Completed section**. Each one collects threads above the project folders: Needs you holds threads waiting for an approval, an answer, or a guest message
 until you respond, and Failed and Completed hold finished runs until you open them. An opened
-thread moves back to its project when you leave it. Pinned threads stay in Pinned.
+thread moves back to its project when you leave it. To keep a finished thread in its section,
+choose **Mark unread** from the thread's menu before you leave it. Pinned threads stay in Pinned.
 
 ### Group threads by project (beta)
 
