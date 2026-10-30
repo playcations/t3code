@@ -15,8 +15,7 @@ export function useThreadListV2ShelfPreferences() {
   const collapsedProjectGroups = loaded
     ? (preferencesResult.value.collapsedProjectGroups ?? [])
     : [];
-  const workingShelfEnabled =
-    !projectFoldersEnabled && loaded && preferencesResult.value.workingShelfEnabled !== false;
+  const workingShelfEnabled = loaded && preferencesResult.value.workingShelfEnabled !== false;
   const toggleProjectGroup = (key: string) => {
     if (!loaded) return;
     savePreferences({

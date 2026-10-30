@@ -2,7 +2,7 @@ import type {
   EnvironmentProject,
   EnvironmentThreadShell,
 } from "@t3tools/client-runtime/state/shell";
-import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { PendingDraftTask } from "../../state/pending-new-tasks-model";
@@ -283,6 +283,45 @@ describe("project thread folders", () => {
         .filter((item) => item.type === "v2-pending")
         .map((item) => item.pendingTask.projectId),
     ).toEqual([b.id]);
+  });
+
+  it("keeps the Working section above the folders and its threads out of them", () => {
+    const { a, b, input } = setup();
+    const running = {
+      status: "running" as const,
+      activeRunId: null,
+      providerInstanceId: ProviderInstanceId.make("codex"),
+      providerName: "Codex",
+      lastError: null,
+      updatedAt: now,
+    };
+    const layout = buildThreadListV2Items({
+      threads: [
+        thread("a-idle", a),
+        thread("a-busy", a, { runtime: running }),
+        thread("b-busy", b, { runtime: running }),
+      ],
+      environmentId: null,
+      searchQuery: "",
+      now,
+      workingShelfEnabled: true,
+      workingShelfExpanded: true,
+    });
+    const items = buildThreadListV2ListItems({
+      ...layout,
+      pendingTasks: [],
+      workingShelfExpanded: true,
+    });
+    const result = buildProjectThreadList({ ...input, items });
+    expect(
+      result.map((item) =>
+        item.type === "v2-thread"
+          ? item.item.thread.id
+          : item.type === "v2-project-header"
+            ? `folder:${item.title}(${item.count})`
+            : item.type,
+      ),
+    ).toEqual(["v2-working-shelf", "a-busy", "b-busy", "folder:A(1)", "a-idle"]);
   });
 
   it("updates recycled headers when collapse or attention state changes", () => {

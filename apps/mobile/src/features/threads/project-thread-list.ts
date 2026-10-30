@@ -28,8 +28,23 @@ export function buildProjectThreadList(input: {
     ),
   );
   const pinned: ThreadListV2ListItem[] = [];
+  // The Working section stays one section above the folders, since its threads are busy.
+  const working: ThreadListV2ListItem[] = [];
   const shelves: ThreadListV2ListItem[] = [];
+  let inWorkingShelf = false;
   for (const item of input.items) {
+    if (item.type === "v2-working-shelf") {
+      inWorkingShelf = true;
+      working.push(item);
+      continue;
+    }
+    if (item.type === "v2-snoozed-shelf" || item.type === "v2-settled-shelf") {
+      inWorkingShelf = false;
+    }
+    if (inWorkingShelf && item.type === "v2-thread") {
+      working.push(item);
+      continue;
+    }
     if (
       item.type === "v2-snoozed-shelf" ||
       item.type === "v2-settled-shelf" ||
@@ -62,7 +77,7 @@ export function buildProjectThreadList(input: {
     }
   }
   const collapsed = new Set(input.collapsedProjectGroups);
-  const result: ThreadListV2ListItem[] = [...pinned];
+  const result: ThreadListV2ListItem[] = [...pinned, ...working];
   for (const folder of folders) {
     const count = folder.inbox.length;
     if (count === 0) continue;
