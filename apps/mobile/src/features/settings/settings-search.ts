@@ -83,7 +83,15 @@ const SETTINGS_SEARCH_TERMS = {
     "submodules",
     "start from remote",
   ],
-  SettingsLabs: ["legacy", "plan mode", "beta", "linked environments", "link machine"],
+  SettingsLabs: [
+    "legacy",
+    "plan mode",
+    "beta",
+    "linked environments",
+    "link machine",
+    "group by project",
+    "project folders",
+  ],
   SettingsEnvironmentMaintenance: ["updates", "provider updates", "restart", "manage environments"],
   SettingsAbout: [
     "version",

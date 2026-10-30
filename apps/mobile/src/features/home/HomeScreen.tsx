@@ -1,4 +1,5 @@
 import { useActiveNewTask } from "../../state/active-new-task";
+import { ProjectThreadHeader } from "../threads/ProjectThreadHeader";
 import { AppActivityIndicator } from "../../components/ui/AppActivityIndicator";
 import { useAndroidControlSizing } from "../../components/ui/useAndroidControlSizing";
 import type { ThreadMoveDestination } from "../threads/threadOrder";
@@ -417,6 +418,9 @@ export function HomeScreen(props: HomeScreenProps) {
     setSettledVisibleCount((count) => count + THREAD_LIST_V2_SETTLED_PAGE_COUNT);
   const {
     loaded: shelfPreferencesLoaded,
+    projectFoldersEnabled,
+    collapsedProjectGroups,
+    toggleProjectGroup,
     settledShelfExpanded,
     snoozedShelfExpanded,
     workingShelfEnabled,
@@ -467,6 +471,13 @@ export function HomeScreen(props: HomeScreenProps) {
     snoozedShelfExpanded,
     settledShelfExpanded,
     selectedThreadKey,
+    projectFolders: projectFoldersEnabled
+      ? {
+          scopes: v2ScopedProjectGroup === null ? projectScopes : [v2ScopedProjectGroup],
+          sortOrder: props.projectSortOrder,
+          collapsedKeys: collapsedProjectGroups,
+        }
+      : null,
   });
   // Called as `props.onSelectThread(...)`, the compiler would cache this handler on the whole
   // props object, which is new on every render of Home's parent.
@@ -490,6 +501,16 @@ export function HomeScreen(props: HomeScreenProps) {
   }, [activateVisibleRows, swipeEnabled, threadListV2Items]);
 
   const renderV2Item = ({ item }: { readonly item: ThreadListV2ListItem }) => {
+    if (item.type === "v2-project-header") {
+      return (
+        <ProjectThreadHeader
+          pane={primaryColumn ? "sidebar" : "screen"}
+          item={item}
+          onToggle={() => toggleProjectGroup(item.projectKey)}
+          onNewThread={() => props.onNewThreadInProject(item.project)}
+        />
+      );
+    }
     if (item.type === "v2-pending") {
       const pendingScopeKey = scopedProjectKey(
         item.pendingTask.environmentId,
@@ -609,7 +630,9 @@ export function HomeScreen(props: HomeScreenProps) {
         reorderSupported={
           item.item.pinned
             ? pinReorderEnvironmentIds.has(thread.environmentId)
-            : !workingShelfEnabled && activeReorderEnvironmentIds.has(thread.environmentId)
+            : !workingShelfEnabled &&
+              !projectFoldersEnabled &&
+              activeReorderEnvironmentIds.has(thread.environmentId)
         }
         canMoveUp={item.canMoveUp}
         canMoveDown={item.canMoveDown}

@@ -3,6 +3,11 @@ import type { EnvironmentId } from "@t3tools/contracts";
 import { useMemo, useSyncExternalStore } from "react";
 
 import { scopedProjectKey } from "../../lib/scopedEntities";
+import {
+  sortHomeProjectScopes,
+  type HomeProjectScope,
+  type HomeProjectSortOrder,
+} from "../home/homeThreadList";
 import { useOlderSettledShelf, useOlderSettledShelfGrowth } from "../../state/olderSettledShelf";
 import type { PendingNewTask } from "../../state/use-pending-new-tasks";
 import {
@@ -12,6 +17,7 @@ import {
   threadListInboxReturns,
 } from "./threadListV2";
 import { computeThreadMoveAvailability } from "./threadOrder";
+import { buildProjectThreadList } from "./project-thread-list";
 
 /**
  * Screens' select handlers read the content-only key set; a fresh one per list rebuild gave
@@ -54,6 +60,12 @@ export function useThreadListV2(input: {
   readonly snoozedShelfExpanded: boolean;
   readonly settledShelfExpanded: boolean;
   readonly selectedThreadKey: string | null;
+  /** Groups unpinned active threads under collapsible project headers when set. */
+  readonly projectFolders: {
+    readonly scopes: ReadonlyArray<HomeProjectScope>;
+    readonly sortOrder: HomeProjectSortOrder;
+    readonly collapsedKeys: ReadonlyArray<string>;
+  } | null;
 }) {
   const { threads, workingShelfEnabled } = input;
   // A thread can stop working when the threads change, or when its exit grace expires.
@@ -88,7 +100,8 @@ export function useThreadListV2(input: {
     });
   const moveAvailability = new Map([
     ...sectionAvailability("pinned"),
-    ...(workingShelfEnabled ? [] : sectionAvailability("active")),
+    // Folders order active threads by time, like the Working section.
+    ...(workingShelfEnabled || input.projectFolders !== null ? [] : sectionAvailability("active")),
   ]);
   // Older settled threads load in pages; the shelf lists them only as far as they are loaded.
   const scopes = olderSettledScopes(input);
@@ -146,7 +159,7 @@ export function useThreadListV2(input: {
         )) &&
       (searchQuery.length === 0 || pendingTask.title.toLocaleLowerCase().includes(searchQuery)),
   );
-  const items = buildThreadListV2ListItems({
+  const flatItems = buildThreadListV2ListItems({
     items: layout.items,
     pendingTasks,
     workingCount: layout.workingCount,
@@ -164,6 +177,21 @@ export function useThreadListV2(input: {
     moveAvailability,
     shelfPreferencesLoading: !input.shelfPreferencesLoaded,
   });
+  const items =
+    input.projectFolders === null
+      ? flatItems
+      : buildProjectThreadList({
+          items: flatItems,
+          scopes: sortHomeProjectScopes({
+            scopes: input.projectFolders.scopes,
+            threads,
+            pendingTasks: input.pendingTasks,
+            projectSortOrder: input.projectFolders.sortOrder,
+          }),
+          collapsedProjectGroups: input.projectFolders.collapsedKeys,
+          searching: searchQuery.length > 0,
+          disabled: !input.shelfPreferencesLoaded,
+        });
   return { layout, items, contentOnlyThreadKeys, olderSettledShelf };
 }
 

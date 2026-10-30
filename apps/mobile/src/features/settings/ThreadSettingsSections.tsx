@@ -34,6 +34,7 @@ export function SettingsLabsRouteScreen() {
         contentContainerClassName="gap-6 px-5 pt-4"
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 18) + 18 }}
       >
+        <ProjectFoldersSettingsSection />
         <BetaSettingsSection />
         <LegacySettingsSection />
       </ScrollView>
@@ -174,6 +175,9 @@ export function WorkingSectionSettings() {
   const preferences = useAtomValue(mobilePreferencesAtom);
   const workingShelfEnabled =
     AsyncResult.isSuccess(preferences) && preferences.value.workingShelfEnabled !== false;
+  // Project folders already separate the work, so they replace the Working section.
+  const projectFoldersEnabled =
+    AsyncResult.isSuccess(preferences) && preferences.value.projectFoldersEnabled === true;
 
   return (
     <View className="gap-3">
@@ -181,7 +185,9 @@ export function WorkingSectionSettings() {
         <SettingsSwitchRow
           icon="bolt.circle"
           label="Working section"
-          value={workingShelfEnabled}
+          {...(projectFoldersEnabled ? { subtitle: "Off while grouping by project in Labs." } : {})}
+          disabled={projectFoldersEnabled}
+          value={workingShelfEnabled && !projectFoldersEnabled}
           onValueChange={(value) => savePreferences({ workingShelfEnabled: value })}
         />
       </SettingsSection>
@@ -210,6 +216,30 @@ export function NewThreadSettingsSection() {
         onValueChange={(value) => savePreferences({ useLastProjectForNewThreads: value })}
       />
     </SettingsSection>
+  );
+}
+
+function ProjectFoldersSettingsSection() {
+  const savePreferences = useAtomSet(updateMobilePreferencesAtom);
+  const preferences = useAtomValue(mobilePreferencesAtom);
+  const projectFoldersEnabled =
+    AsyncResult.isSuccess(preferences) && preferences.value.projectFoldersEnabled === true;
+
+  return (
+    <View className="gap-3">
+      <SettingsSection title="Beta: Thread list">
+        <SettingsSwitchRow
+          icon="folder"
+          label="Group by project"
+          value={projectFoldersEnabled}
+          onValueChange={(value) => savePreferences({ projectFoldersEnabled: value })}
+        />
+      </SettingsSection>
+      <Text className="px-2 text-sm text-foreground-muted">
+        Group active threads into collapsible project folders. Pinned threads stay on top, and
+        Snoozed and Settled stay below the folders. Replaces the Working section.
+      </Text>
+    </View>
   );
 }
 

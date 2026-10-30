@@ -9,7 +9,10 @@ import {
   threadWokeAt,
 } from "@t3tools/client-runtime/state/thread-settled";
 import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
+import type {
+  EnvironmentProject,
+  EnvironmentThreadShell,
+} from "@t3tools/client-runtime/state/shell";
 import { resolveThreadProviderStack } from "@t3tools/client-runtime/state/models";
 import {
   threadSearchMatchKey,
@@ -366,7 +369,20 @@ export interface ThreadListV2SettledShelfListItem {
   readonly disabled: boolean;
 }
 
+export interface ThreadListV2ProjectHeaderItem {
+  readonly type: "v2-project-header";
+  readonly key: string;
+  readonly projectKey: string;
+  readonly title: string;
+  readonly project: EnvironmentProject;
+  readonly count: number;
+  readonly needsAttention: boolean;
+  readonly expanded: boolean;
+  readonly disabled: boolean;
+}
+
 export type ThreadListV2ListItem =
+  | ThreadListV2ProjectHeaderItem
   | ThreadListV2ThreadListItem
   | ThreadListV2PendingListItem
   | ThreadListV2WorkingShelfListItem
@@ -377,6 +393,7 @@ export function isThreadListV2ListItem(value: {
   readonly type: string;
 }): value is ThreadListV2ListItem {
   return (
+    value.type === "v2-project-header" ||
     value.type === "v2-thread" ||
     value.type === "v2-pending" ||
     value.type === "v2-working-shelf" ||
@@ -391,6 +408,17 @@ export function threadListV2ListItemsAreEqual(
   item: ThreadListV2ListItem,
 ): boolean {
   switch (item.type) {
+    case "v2-project-header":
+      return (
+        previous.type === item.type &&
+        previous.key === item.key &&
+        previous.title === item.title &&
+        previous.project === item.project &&
+        previous.count === item.count &&
+        previous.needsAttention === item.needsAttention &&
+        previous.expanded === item.expanded &&
+        previous.disabled === item.disabled
+      );
     case "v2-thread":
       return (
         previous.type === "v2-thread" &&

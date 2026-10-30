@@ -1,4 +1,5 @@
 import { useActiveNewTask } from "../../state/active-new-task";
+import { ProjectThreadHeader } from "./ProjectThreadHeader";
 import { ThreadUndoNotice } from "../home/ThreadUndoNotice";
 import { useAndroidControlSizing } from "../../components/ui/useAndroidControlSizing";
 import { resolveScratchProjectScopeKey } from "@t3tools/client-runtime/state/project-grouping";
@@ -266,6 +267,9 @@ function ThreadNavigationSidebarPane(
     setSettledVisibleCount((count) => count + THREAD_LIST_V2_SETTLED_PAGE_COUNT);
   const {
     loaded: shelfPreferencesLoaded,
+    projectFoldersEnabled,
+    collapsedProjectGroups,
+    toggleProjectGroup,
     settledShelfExpanded,
     snoozedShelfExpanded,
     workingShelfEnabled,
@@ -316,6 +320,13 @@ function ThreadNavigationSidebarPane(
     snoozedShelfExpanded,
     settledShelfExpanded,
     selectedThreadKey: props.selectedThreadKey ?? null,
+    projectFolders: projectFoldersEnabled
+      ? {
+          scopes: selectedProjectScope === null ? projectScopes : [selectedProjectScope],
+          sortOrder: options.projectSortOrder,
+          collapsedKeys: collapsedProjectGroups,
+        }
+      : null,
   });
   const listItems: readonly SidebarListItem[] =
     settledShelfExpanded && threadListV2Layout.hiddenSettledCount > 0
@@ -595,7 +606,9 @@ function ThreadNavigationSidebarPane(
             reorderSupported={
               item.item.pinned
                 ? pinReorderEnvironmentIds.has(thread.environmentId)
-                : !workingShelfEnabled && activeReorderEnvironmentIds.has(thread.environmentId)
+                : !workingShelfEnabled &&
+                  !projectFoldersEnabled &&
+                  activeReorderEnvironmentIds.has(thread.environmentId)
             }
             canMoveUp={item.canMoveUp}
             canMoveDown={item.canMoveDown}
@@ -612,6 +625,15 @@ function ThreadNavigationSidebarPane(
           />
         );
       }
+      case "v2-project-header":
+        return (
+          <ProjectThreadHeader
+            pane="sidebar"
+            item={item}
+            onToggle={() => toggleProjectGroup(item.projectKey)}
+            onNewThread={() => props.onNewThreadInProject(item.project)}
+          />
+        );
       case "v2-working-shelf":
         return (
           <ThreadListV2WorkingShelfHeader
