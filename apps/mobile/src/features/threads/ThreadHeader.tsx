@@ -111,26 +111,6 @@ export function ThreadHeader(
         }
         onBack={layout.usesSplitView ? undefined : goBack}
         actions={androidHeaderActions}
-        menus={
-          props.threadActions
-            ? [
-                {
-                  title: "Thread actions",
-                  icon: { ios: "ellipsis.circle", android: "more_vert" },
-                  separateBackground: false,
-                  items: [
-                    {
-                      id: "mark-unread",
-                      title: "Mark unread",
-                      icon: "circle.fill",
-                      disabled: props.threadActions.markUnreadDisabled,
-                      onPress: props.threadActions.onMarkUnread,
-                    },
-                  ],
-                },
-              ]
-            : undefined
-        }
         hideBottomBorder
         compact={composerKeyboardActive}
       />
