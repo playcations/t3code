@@ -22,11 +22,7 @@ function at(seconds: number) {
 }
 
 // claimThreadOpen dedupes per thread in module state, so each test opens its own thread.
-function setup(
-  threadName: string,
-  initial: Omit<Shell, "environmentId" | "id"> | null,
-  options: { readonly completionReadDelayMs?: number } = {},
-) {
+function setup(threadName: string, initial: Omit<Shell, "environmentId" | "id"> | null) {
   vi.useFakeTimers({ now: Date.UTC(2026, 0, 1) });
   const threadId = ThreadId.make(threadName);
   const ref = { environmentId, threadId };
@@ -45,7 +41,6 @@ function setup(
       },
     },
     markLocalVisit: (_ref, visitedAt) => localVisits.push(visitedAt),
-    ...options,
   });
   const registry = AtomRegistry.make();
   return {
@@ -95,34 +90,6 @@ it("sends an unseen completion without waiting for the throttle", () => {
   t.mount();
   t.update({ updatedAt: at(20), latestRun: { completedAt: at(20) } });
   expect(t.visits.slice(1)).toEqual([{ threadId: t.ref.threadId, visitedAt: at(20) }]);
-});
-
-it("with a read delay, counts an unseen completion as read only once it stayed on screen", () => {
-  using t = setup(
-    "thread-completion-delay",
-    { updatedAt: at(10), lastVisitedAt: at(0), latestRun: null },
-    { completionReadDelayMs: 2_000 },
-  );
-  t.mount();
-  t.update({ updatedAt: at(20), latestRun: { completedAt: at(20) } });
-  vi.advanceTimersByTime(1_999);
-  expect(t.visits).toHaveLength(1);
-  vi.advanceTimersByTime(1);
-  expect(t.visits.slice(1)).toEqual([{ threadId: t.ref.threadId, visitedAt: at(20) }]);
-});
-
-it("with a read delay, leaves a completion unread when the thread closes first", () => {
-  using t = setup(
-    "thread-completion-delay-leave",
-    { updatedAt: at(10), lastVisitedAt: at(0), latestRun: null },
-    { completionReadDelayMs: 2_000 },
-  );
-  const unmount = t.mount();
-  t.update({ updatedAt: at(20), latestRun: { completedAt: at(20) } });
-  vi.advanceTimersByTime(1_000);
-  unmount();
-  vi.advanceTimersByTime(VISIT_DISPATCH_THROTTLE_MS);
-  expect(t.visits).toHaveLength(1);
 });
 
 it("does not resend the open a palette pick already sent", () => {

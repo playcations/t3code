@@ -200,7 +200,7 @@ import { resolveThreadFeedSubmissionAnchor } from "./thread-feed-live-follow";
 import { useOpenLinkedThread } from "./useOpenLinkedThread";
 import { useGlobalVoiceInput } from "../voice-input/VoiceInputProvider";
 import { useEnvironmentShellReadiness } from "../../state/shell";
-import { THREAD_READ_DWELL_MS, useSettledThreadView } from "./useSettledThreadView";
+import { useSettledThreadView } from "./useSettledThreadView";
 
 export interface ThreadDetailScreenProps {
   readonly header?: React.ReactNode;
@@ -340,7 +340,6 @@ const wakeAwareVisitShell = Atom.family((key: string) => {
 const threadVisitTracker = createThreadVisitTracker({
   threadShellAtom: (ref) => wakeAwareVisitShell(threadKey(ref)),
   visit: threadEnvironment.visit,
-  completionReadDelayMs: THREAD_READ_DWELL_MS,
 });
 
 // Past the composer's 180 ms height animation.
@@ -1106,7 +1105,7 @@ function ThreadDetailBody(props: ThreadDetailScreenProps) {
     }
   };
   const showContent = props.showContent ?? true;
-  // Showing the synced thread in the foreground for a moment counts as viewing it.
+  // Showing the thread counts as viewing it; after a resume or sync, only once it settles.
   const shellSynchronizing =
     useEnvironmentShellReadiness(props.environmentId).status === "synchronizing";
   const viewedThread = useSettledThreadView(
