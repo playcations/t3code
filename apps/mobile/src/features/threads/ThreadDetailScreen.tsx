@@ -199,6 +199,8 @@ import type { ThreadContentPresentation } from "./threadContentPresentation";
 import { resolveThreadFeedSubmissionAnchor } from "./thread-feed-live-follow";
 import { useOpenLinkedThread } from "./useOpenLinkedThread";
 import { useGlobalVoiceInput } from "../voice-input/VoiceInputProvider";
+import { useEnvironmentShellReadiness } from "../../state/shell";
+import { THREAD_READ_DWELL_MS, useSettledThreadView } from "./useSettledThreadView";
 
 export interface ThreadDetailScreenProps {
   readonly header?: React.ReactNode;
@@ -338,6 +340,7 @@ const wakeAwareVisitShell = Atom.family((key: string) => {
 const threadVisitTracker = createThreadVisitTracker({
   threadShellAtom: (ref) => wakeAwareVisitShell(threadKey(ref)),
   visit: threadEnvironment.visit,
+  completionReadDelayMs: THREAD_READ_DWELL_MS,
 });
 
 // Past the composer's 180 ms height animation.
@@ -1103,14 +1106,16 @@ function ThreadDetailBody(props: ThreadDetailScreenProps) {
     }
   };
   const showContent = props.showContent ?? true;
-  // Showing the thread counts as viewing it, before its live shell arrives too.
-  useAtomMount(
-    threadVisitTracker(
-      showContent && !props.draftMode
-        ? { environmentId: props.environmentId, threadId: props.selectedThread.id }
-        : null,
-    ),
+  // Showing the synced thread in the foreground for a moment counts as viewing it.
+  const shellSynchronizing =
+    useEnvironmentShellReadiness(props.environmentId).status === "synchronizing";
+  const viewedThread = useSettledThreadView(
+    showContent && !props.draftMode
+      ? { environmentId: props.environmentId, threadId: props.selectedThread.id }
+      : null,
+    shellSynchronizing,
   );
+  useAtomMount(threadVisitTracker(viewedThread));
   const layoutVariant = props.layoutVariant ?? "compact";
   const isSplitLayout = layoutVariant === "split";
   const contentMaxWidth =

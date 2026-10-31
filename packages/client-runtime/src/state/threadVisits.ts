@@ -43,6 +43,11 @@ export interface ThreadVisitTrackerOptions {
    * that keeps its own watermark for them records the visit here instead.
    */
   readonly markLocalVisit?: (ref: ScopedThreadRef, visitedAt: string) => void;
+  /**
+   * How long a finished run stays on screen before it counts as read. A client that can show a
+   * thread only in passing, such as while resuming, sets it so leaving in time keeps it unread.
+   */
+  readonly completionReadDelayMs?: number;
 }
 
 /**
@@ -124,6 +129,11 @@ export function createThreadVisitTracker(options: ThreadVisitTrackerOptions) {
         const hasUnseenCompletion =
           !Number.isNaN(completedAtMs) &&
           (Number.isNaN(lastVisitedAtMs) || completedAtMs > lastVisitedAtMs);
+        const completionReadDelayMs = options.completionReadDelayMs ?? 0;
+        if (hasUnseenCompletion && !wakeIsLatest && completionReadDelayMs > 0) {
+          timer = setTimeout(() => dispatch(shell, visitedAt, false), completionReadDelayMs);
+          return;
+        }
         const elapsed = Date.now() - lastDispatchAt;
         if (hasUnseenCompletion || wakeIsLatest || elapsed >= VISIT_DISPATCH_THROTTLE_MS) {
           dispatch(shell, visitedAt, false);
