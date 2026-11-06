@@ -14,7 +14,7 @@ import { createThreadVisitTracker } from "@t3tools/client-runtime/state/thread-v
 import { useChildThreadInputs, useThreadReportedModelSelection } from "../../state/entities";
 import { UsageLimitRecoveryCard } from "./UsageLimitRecoveryCard";
 import { ChatGptUsageLimitNotice } from "./ChatGptUsageLimitNotice";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import {
   effectiveSnoozed,
   threadWokeAt,
@@ -1108,11 +1108,13 @@ function ThreadDetailBody(props: ThreadDetailScreenProps) {
   // Showing the thread counts as viewing it; after a resume or sync, only once it settles.
   const shellSynchronizing =
     useEnvironmentShellReadiness(props.environmentId).status === "synchronizing";
+  const covered = !useIsFocused();
   const viewedThread = useSettledThreadView(
     showContent && !props.draftMode
       ? { environmentId: props.environmentId, threadId: props.selectedThread.id }
       : null,
     shellSynchronizing,
+    covered,
   );
   useAtomMount(threadVisitTracker(viewedThread));
   const layoutVariant = props.layoutVariant ?? "compact";
