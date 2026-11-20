@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import { useGT } from "gt-react-native";
 
 import { RowPressable } from "../../components/ui/RowPressable";
 import { cn } from "../../lib/cn";
@@ -14,6 +15,7 @@ export function ProjectThreadHeader(props: {
   readonly onToggle: () => void;
   readonly onNewThread: () => void;
 }) {
+  const gt = useGT();
   const { item } = props;
   const sidebar = props.pane === "sidebar";
   return (
@@ -82,7 +84,7 @@ export function ProjectThreadHeader(props: {
       </RowPressable>
       <RowPressable
         accessibilityRole="button"
-        accessibilityLabel={`New thread in ${item.title}`}
+        accessibilityLabel={gt("New thread in {project}", { project: item.title })}
         onPress={props.onNewThread}
         disabled={item.disabled}
         className="min-h-12 min-w-12 items-center justify-center rounded-xl"

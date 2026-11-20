@@ -1,7 +1,8 @@
-import { useAtomSet, useAtomValue } from "@effect/atom-react";
+import { useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/reactivity";
 
-import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
+import { mobilePreferencesAtom, saveMobilePreferences } from "../../state/preferences";
+import { useAtomCommand } from "../../state/use-atom-command";
 import type { ThreadListV2InboxKind } from "./threadListV2";
 
 const INBOX_EXPANDED_PREFERENCE = {
@@ -12,7 +13,7 @@ const INBOX_EXPANDED_PREFERENCE = {
 
 export function useThreadListV2ShelfPreferences() {
   const preferencesResult = useAtomValue(mobilePreferencesAtom);
-  const savePreferences = useAtomSet(updateMobilePreferencesAtom);
+  const savePreferences = useAtomCommand(saveMobilePreferences);
   const loaded = AsyncResult.isSuccess(preferencesResult);
   const snoozedShelfExpanded =
     loaded && preferencesResult.value.threadListSnoozedShelfExpanded === true;
@@ -25,7 +26,7 @@ export function useThreadListV2ShelfPreferences() {
   const workingShelfEnabled = loaded && preferencesResult.value.workingShelfEnabled !== false;
   const toggleProjectGroup = (key: string) => {
     if (!loaded) return;
-    savePreferences({
+    void savePreferences({
       transform: (current) => ({
         collapsedProjectGroups: current.collapsedProjectGroups?.includes(key)
           ? current.collapsedProjectGroups.filter((value) => value !== key)
@@ -53,7 +54,7 @@ export function useThreadListV2ShelfPreferences() {
   const toggleInboxShelf = (kind: ThreadListV2InboxKind) => {
     if (!loaded) return;
     const preference = INBOX_EXPANDED_PREFERENCE[kind];
-    savePreferences({
+    void savePreferences({
       transform: (current) => ({ [preference]: current[preference] === false }),
     });
   };
@@ -61,7 +62,7 @@ export function useThreadListV2ShelfPreferences() {
   // Transforms read optimistic state so same-frame presses toggle twice.
   const toggleSnoozedShelf = () => {
     if (!loaded) return;
-    savePreferences({
+    void savePreferences({
       transform: (current) => ({
         threadListSnoozedShelfExpanded: current.threadListSnoozedShelfExpanded !== true,
       }),
@@ -69,7 +70,7 @@ export function useThreadListV2ShelfPreferences() {
   };
   const toggleSettledShelf = () => {
     if (!loaded) return;
-    savePreferences({
+    void savePreferences({
       transform: (current) => ({
         threadListSettledShelfExpanded: current.threadListSettledShelfExpanded !== true,
       }),
@@ -77,7 +78,7 @@ export function useThreadListV2ShelfPreferences() {
   };
   const togglePinnedShelf = () => {
     if (!loaded) return;
-    savePreferences({
+    void savePreferences({
       transform: (current) => ({
         threadListPinnedShelfExpanded: current.threadListPinnedShelfExpanded === false,
       }),
@@ -85,7 +86,7 @@ export function useThreadListV2ShelfPreferences() {
   };
   const toggleWorkingShelf = () => {
     if (!loaded) return;
-    savePreferences({
+    void savePreferences({
       transform: (current) => ({
         threadListWorkingShelfExpanded: current.threadListWorkingShelfExpanded !== true,
       }),
